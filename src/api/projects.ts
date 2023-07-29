@@ -1,7 +1,13 @@
-import { type Bounty } from "../sharedTypes";
+import {
+  CreateProjectData,
+  type Bounty,
+  BountyMgrSetQuotePrice,
+  BountyMgrDeclineProject,
+} from "../sharedTypes";
 import { app, db } from "../";
 import { type Project } from "../sharedTypes";
 import { Request, Response } from "express";
+import { v4 as uuid } from "uuid";
 
 export const SAMPLE_PROJECTS: Project[] = [
   {
@@ -74,4 +80,73 @@ export function projectsSetup() {
       res.send(targetBounties);
     }
   );
+  app.post("/create-proposal", async (req: Request, res: Response) => {
+    const createProjectData: CreateProjectData = req.body;
+    function canProceedCreateProject() {
+      if (!createProjectData) return false;
+      if (createProjectData.title.trim().length < 3) return false;
+      if (createProjectData.description.trim().length < 3) return false;
+      if (createProjectData.email.trim().length < 3) return false;
+      let emailReg = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w\w+)+$/;
+      if (!emailReg.test(createProjectData.email)) return false;
+      if (createProjectData.phone.trim().length < 10) return false;
+
+      return true;
+    }
+    if (!canProceedCreateProject())
+      return res.status(400).json({ message: "Invalid data" });
+
+    const currProjects = (await db.getObjectDefault("/projects", undefined)) as
+      | Project[]
+      | undefined;
+
+    const newProject: Project = {
+      id: uuid(),
+      title: createProjectData.title,
+      description: createProjectData.description,
+      stage: "WaitingBountyMgrQuote",
+      email: createProjectData.email,
+      phone: createProjectData.phone,
+      quotePrice: 0,
+      bountyIDs: [],
+    };
+
+    db.push("/projects", [newProject, ...currProjects]);
+
+    res.sendStatus(200);
+  });
+  app.post(
+    "/bountymgr-set-quote-price",
+    async (req: Request, res: Response) => {
+      const body = req.body as BountyMgrSetQuotePrice;
+      if (!body.projectID || !body.quotePrice) {
+        return res.sendStatus(400);
+      }
+      const currProjects = (await db.getObjectDefault(
+        "/projects",
+        undefined
+      )) as Project[] | undefined;
+
+      const proj = currProjects.find((p) => p.id == body.projectID);
+      proj.quotePrice = body.quotePrice;
+      proj.stage = "WaitingFounderPay";
+      db.push("/projects", currProjects);
+      res.sendStatus(200);
+    }
+  );
+  app.post("/bountymgr-decline", async (req: Request, res: Response) => {
+    const body = req.body as BountyMgrDeclineProject;
+    if (!body) {
+      return res.sendStatus(400);
+    }
+    const currProjects = (await db.getObjectDefault("/projects", undefined)) as
+      | Project[]
+      | undefined;
+
+    const proj = currProjects.find((p) => p.id == body.projectID);
+    proj.quotePrice = 0;
+    proj.stage = "Declined";
+    db.push("/projects", currProjects);
+    res.sendStatus(200);
+  });
 }
