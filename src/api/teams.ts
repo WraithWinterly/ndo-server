@@ -57,7 +57,7 @@ export function teamsSetup() {
       // data.memberAddressesToInvite
       const completeData: Team = {
         ...data,
-        members: [],
+        members: [data.creatorAddress],
         id: uuid(),
       };
       db.push("/teams", [completeData, ...currTeams]);
