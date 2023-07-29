@@ -10,6 +10,14 @@ export type CreateProfile = {
   walletAddress: string;
 };
 
+export type CreateTeam = {
+  name: string;
+  description: string;
+  link: string;
+  memberAddressesToInvite: string[];
+  creatorAddress: string;
+};
+
 export type CreateProjectData = {
   title: string;
   description: string;
@@ -35,11 +43,11 @@ export type NotificationTypes =
 // Team
 export type Team = {
   id: string;
-  title: string;
+  name: string;
   description: string;
+  link: string;
   creatorAddress: string;
   members: string[];
-  link: string;
 };
 
 //Project
