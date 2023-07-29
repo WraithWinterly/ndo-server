@@ -4,20 +4,18 @@ import { type Request, type Response } from "express";
 
 export const SAMPLE_TEAMS: Team[] = [
   {
-    id: "1",
+    id: "3D1DADE6-1493-41CB-84DC-5F53F4860959",
     title: "Team Solsitce",
     description: "lorem20",
-    memberCount: 2,
-    creatorID: "",
-    members: [],
+    creatorAddress: "FC2E5GnpBUs74FtkBaf7Q36JWhbAtSspyVU2mndst7pd",
+    members: ["FC2E5GnpBUs74FtkBaf7Q36JWhbAtSspyVU2mndst7pd"],
     link: "https://aydens.net",
   },
   {
-    id: "2",
+    id: "B985E4B9-2642-41E3-864F-776DC03BA8DE",
     title: "Team Compete!!!",
     description: "lorem20",
-    memberCount: 4,
-    creatorID: "",
+    creatorAddress: "",
     members: [],
     link: "https://aydens.net",
   },

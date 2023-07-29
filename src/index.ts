@@ -39,6 +39,13 @@ app.get("/seed", async (req: Request, res: Response) => {
   res.status(200).send();
 });
 
+// NOT needed for actual app, used for testing data
+app.get("/reload", async (req: Request, res: Response) => {
+  db.reload();
+  console.log("[i] Database Reloaded");
+  res.status(200).send();
+});
+
 app.get("/alive", (req: Request, res: Response) => {
   res.send("Alive!");
 });

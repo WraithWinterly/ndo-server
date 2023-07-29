@@ -28,17 +28,16 @@ export type Notification = {
   type: NotificationTypes;
 };
 export type NotificationTypes =
-  | "RequestJoinTeam"
-  | "InvitedJoinTeam"
-  | "BountyWon";
+  | 'RequestJoinTeam'
+  | 'InvitedJoinTeam'
+  | 'BountyWon';
 
 // Team
 export type Team = {
   id: string;
   title: string;
   description: string;
-  memberCount: number;
-  creatorID: string;
+  creatorAddress: string;
   members: string[];
   link: string;
 };
@@ -53,11 +52,11 @@ export type Project = {
   bountyIDs: string[];
   quotePrice: number;
   stage:
-    | "WaitingBountyMgrQuote"
-    | "WaitingFounderPay"
-    | "WaitingBountyDesign"
-    | "Declined"
-    | "Ready";
+    | 'WaitingBountyMgrQuote'
+    | 'WaitingFounderPay'
+    | 'WaitingBountyDesign'
+    | 'Declined'
+    | 'Ready';
 };
 
 // Bounties
@@ -68,15 +67,15 @@ export type Bounty = {
   postDate: Date;
   projectName: string;
   projectId: string;
-  type: "Frontend" | "Backend" | "Fullstack" | "Web3";
+  type: 'Frontend' | 'Backend' | 'Fullstack' | 'Web3';
   reward: number;
   deadline: Date;
   teamCount: number;
   youJoined: boolean;
-  stage: "Active" | "Draft" | "Completed" | "ReadyForTests";
+  stage: 'Active' | 'Draft' | 'Completed' | 'ReadyForTests';
   submissions?: string[];
   aboutProject?: string;
-  headerSections?: { [key: string]: string[] };
+  headerSections?: {[key: string]: string[]};
   founder?: Member;
 };
 
@@ -102,20 +101,20 @@ export type Member = {
 };
 
 export const RoleDict: Role[] = [
-  { id: "0", title: "Founder" },
-  { id: "1", title: "Bounty Hunter" },
-  { id: "2", title: "Bounty Manager" },
-  { id: "3", title: "Bounty Designer" },
-  { id: "4", title: "Bounty Validator" },
+  {id: '0', title: 'Founder'},
+  {id: '1', title: 'Bounty Hunter'},
+  {id: '2', title: 'Bounty Manager'},
+  {id: '3', title: 'Bounty Designer'},
+  {id: '4', title: 'Bounty Validator'},
 ];
 
 export type RoleType =
-  | "Founder"
-  | "Bounty Hunter"
-  | "Bounty Manager"
-  | "Bounty Designer"
-  | "Bounty Validator";
+  | 'Founder'
+  | 'Bounty Hunter'
+  | 'Bounty Manager'
+  | 'Bounty Designer'
+  | 'Bounty Validator';
 
 export function GetRole(string: RoleType) {
-  return RoleDict.find((role) => role.title == string)!;
+  return RoleDict.find(role => role.title == string)!;
 }

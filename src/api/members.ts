@@ -8,6 +8,21 @@ import { GetRole } from "../sharedTypes";
 
 export const SAMPLE_MEMBERS: Array<Member> = [
   {
+    username: "Sfhwfh",
+    firstName: "Sfjafn",
+    lastName: "Afhzvn",
+    email: "Sfhf@afb.arh",
+    bio: "",
+    bountiesWon: 0,
+    completedWelcome: true,
+    level: "",
+    membersInvited: 0,
+    playingRole: { id: "0", title: "Founder" },
+    roles: [],
+    teamsJoined: [],
+    walletAddress: "FC2E5GnpBUs74FtkBaf7Q36JWhbAtSspyVU2mndst7pd",
+  },
+  {
     username: "@rocky",
     firstName: "Rocky",
     lastName: "Test",
@@ -77,7 +92,7 @@ export function membersSetup() {
   app.get(
     "/get-member-by-wallet-address/:id",
     async (req: Request, res: Response) => {
-      console.log("test");
+      // console.log("test");
       const currMembers = (await db.getData("/members")) as
         | Member[]
         | undefined;
@@ -94,6 +109,36 @@ export function membersSetup() {
         return;
       }
       res.send(member);
+    }
+  );
+  app.post(
+    "/get-members-by-wallet-addresses",
+    async (req: Request, res: Response) => {
+      // console.log("a: ");
+      const addresses = req.body.addresses as string[];
+      // console.log("a: ", addresses);
+      if (!addresses) {
+        res.status(400).json({
+          message: "No addresses provided",
+        });
+        return;
+      }
+      const currMembers = (await db.getData("/members")) as
+        | Member[]
+        | undefined;
+
+      // console.log(req.params.id);
+      // console.log(currMembers);
+      const members = currMembers?.filter((member) =>
+        addresses.includes(member.walletAddress)
+      );
+      if (!members) {
+        res.status(404).json({
+          message: "Member not found",
+        });
+        return;
+      }
+      res.send(members);
     }
   );
 
