@@ -1,8 +1,8 @@
-import { create } from "domain";
 import { app, db } from "..";
 import {
   CreateTeam,
   InviteToTeamPOSTData,
+  JoinTeamPOSTData,
   Member,
   type Team,
 } from "../sharedTypes";
@@ -125,7 +125,7 @@ export function teamsSetup() {
       const team = currTeams.find((team) => team.id == data.toTeam);
       if (!team) return res.sendStatus(400);
 
-      console.log("here");
+      // console.log("here");
       const users = (await db.getData("/members")) as Member[];
       if (!users) return res.sendStatus(400);
       const fromUser = users.find(
@@ -150,6 +150,54 @@ export function teamsSetup() {
       }
 
       db.push("/teams", currTeams);
+      res.sendStatus(200);
+    } catch (e) {
+      console.error(e);
+      return res.sendStatus(400);
+    }
+  });
+  app.post("/join-team-from-invite", async (req: Request, res: Response) => {
+    const data = req.body as JoinTeamPOSTData;
+    // Ensure correct body data
+    if (!data) return res.sendStatus(400);
+    if (!data.fromAddress) return res.sendStatus(400);
+    if (!data.toTeamID) return res.sendStatus(400);
+
+    try {
+      // Find target team and member
+      const teams = (await db.getData("/teams")) as Team[] | undefined;
+
+      if (!teams) return res.sendStatus(400);
+
+      const team = teams.find((team) => team.id == data.toTeamID);
+
+      if (!team) return res.sendStatus(400);
+
+      const members = (await db.getData("/members")) as Member[];
+      if (!members) return res.sendStatus(400);
+
+      const fromUser = members.find(
+        (user) => user.walletAddress == data.fromAddress
+      );
+
+      if (!fromUser) return res.sendStatus(400);
+
+      // Remove their pending invite
+      fromUser.pendingTeamInvites = fromUser.pendingTeamInvites.filter(
+        (invite) => invite.toTeamId != data.toTeamID
+      );
+      team.pendingInvites = team.pendingInvites.filter(
+        (invite) => invite != data.fromAddress
+      );
+      // Add to team
+      if (!team.members.includes(data.fromAddress)) {
+        team.members.push(data.fromAddress);
+      }
+
+      // Update DB
+      db.push("/teams", teams);
+      db.push("/members", members);
+      console.log("success");
       res.sendStatus(200);
     } catch (e) {
       console.error(e);

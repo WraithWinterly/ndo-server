@@ -111,6 +111,10 @@ export type InviteToTeamPOSTData = {
   toAddress: string;
   toTeam: string;
 };
+export type JoinTeamPOSTData = {
+  fromAddress: string;
+  toTeamID: string;
+};
 
 export type TeamInvite = {
   id: string;
