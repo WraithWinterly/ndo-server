@@ -5,6 +5,7 @@ import { RoleDict, type Member } from "../sharedTypes";
 import * as Types from "../sharedTypes";
 import { Request, Response } from "express";
 import { GetRole } from "../sharedTypes";
+import { v4 as uuid } from "uuid";
 
 export const SAMPLE_MEMBERS: Array<Member> = [
   {
@@ -21,6 +22,7 @@ export const SAMPLE_MEMBERS: Array<Member> = [
     roles: [],
     teamsJoined: [],
     walletAddress: "FC2E5GnpBUs74FtkBaf7Q36JWhbAtSspyVU2mndst7pd",
+    pendingTeamInvites: [],
   },
   {
     username: "@rocky",
@@ -36,6 +38,7 @@ export const SAMPLE_MEMBERS: Array<Member> = [
     membersInvited: 12,
     completedWelcome: true,
     walletAddress: "7A5E0B7D-B202-494F-BB66-174FBE55FDD3",
+    pendingTeamInvites: [],
   },
   {
     username: "@comp1",
@@ -51,6 +54,7 @@ export const SAMPLE_MEMBERS: Array<Member> = [
     membersInvited: 92,
     completedWelcome: true,
     walletAddress: "AB65B816-66A5-4322-A950-453F62C9E86E",
+    pendingTeamInvites: [],
   },
   {
     firstName: "Comp2",
@@ -66,6 +70,7 @@ export const SAMPLE_MEMBERS: Array<Member> = [
     membersInvited: 21,
     completedWelcome: true,
     walletAddress: "F16849F2-8078-4CA0-8A90-2FE84A36E3F1",
+    pendingTeamInvites: [],
   },
   {
     firstName: "Comp3",
@@ -80,7 +85,8 @@ export const SAMPLE_MEMBERS: Array<Member> = [
     teamsJoined: [],
     membersInvited: 21,
     completedWelcome: true,
-    walletAddress: "0F773A3A-AB12-4E01-80E8-B891497A46E1",
+    walletAddress: "000",
+    pendingTeamInvites: [],
   },
 ];
 
@@ -181,6 +187,7 @@ export function membersSetup() {
       roles: [],
       teamsJoined: [],
       walletAddress: m.walletAddress,
+      pendingTeamInvites: [],
     };
 
     const currMembers = (await db.getObjectDefault("/members")) as
@@ -191,7 +198,6 @@ export function membersSetup() {
       !!currMembers &&
       currMembers?.find((mem) => mem?.walletAddress === m.walletAddress)
     ) {
-      console.log("here");
       res.status(400).json("Member already exists");
       return;
     }
@@ -201,4 +207,41 @@ export function membersSetup() {
     res.status(200).send();
     console.log();
   });
+}
+
+export async function InviteToTeam(options: {
+  teamID: string;
+  teamName: string;
+  fromAddressName: string;
+  fromAddress: string;
+  userAddress: string;
+}) {
+  const {
+    teamID,
+    fromAddressName: inviterName,
+    fromAddress: inviterAddress,
+    userAddress,
+  } = options;
+
+  const teams = (await db.getData("/teams")) as Types.Team[];
+  const members = (await db.getData("/members")) as Member[];
+  if (!teams || !members) return "Teams or members not found";
+  const team = teams.find((team) => team.id === teamID);
+  const member = members.find((member) => member.walletAddress === userAddress);
+  if (!team || !member) return "Member or team not found";
+
+  // See if the user is already invited
+  if (team.pendingInvites.includes(userAddress)) return "Already invited";
+  // console.log(team.pendingInvites);
+  // future ... see if user is already in team
+  team.pendingInvites.push(userAddress);
+
+  member.pendingTeamInvites.push({
+    id: uuid(),
+    toTeamId: teamID,
+    toTeamName: team.name,
+    fromAddress: inviterAddress,
+    fromName: inviterName,
+  });
+  db.push("/members", members);
 }

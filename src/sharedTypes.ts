@@ -35,19 +35,6 @@ export type CreateProjectData = {
 
 // END For POST Requests
 
-// Inbox
-export type Notification = {
-  id: string;
-  user: Member;
-  team?: Team;
-  bounty?: Bounty;
-  type: NotificationTypes;
-};
-export type NotificationTypes =
-  | "RequestJoinTeam"
-  | "InvitedJoinTeam"
-  | "BountyWon";
-
 // Team
 export type Team = {
   id: string;
@@ -55,6 +42,8 @@ export type Team = {
   description: string;
   link: string;
   creatorAddress: string;
+  // wallet addresses
+  pendingInvites: string[];
   members: string[];
 };
 
@@ -114,6 +103,21 @@ export type Member = {
   teamsJoined: string[];
   membersInvited: number;
   completedWelcome: boolean;
+  pendingTeamInvites: TeamInvite[];
+};
+
+export type InviteToTeamPOSTData = {
+  fromAddress: string;
+  toAddress: string;
+  toTeam: string;
+};
+
+export type TeamInvite = {
+  id: string;
+  fromAddress: string;
+  fromName: string;
+  toTeamId: string;
+  toTeamName: string;
 };
 
 export const RoleDict: Role[] = [

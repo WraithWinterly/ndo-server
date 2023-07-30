@@ -7,7 +7,6 @@ import { bountiesSeed, bountiesSetup } from "./api/bounties";
 import { memberSeed, membersSetup } from "./api/members";
 import { teamsSeed, teamsSetup } from "./api/teams";
 import { projectsSeed, projectsSetup } from "./api/projects";
-import { inboxSeed, inboxSetup } from "./api/inbox";
 
 export const db = new JsonDB(new Config("jsonDB", true, false, "/"));
 
@@ -34,7 +33,6 @@ app.get("/seed", async (req: Request, res: Response) => {
   await memberSeed();
   await teamsSeed();
   await projectsSeed();
-  await inboxSeed();
   console.log("[i] Database Seeded");
   res.status(200).send();
 });
@@ -54,7 +52,6 @@ bountiesSetup();
 membersSetup();
 teamsSetup();
 projectsSetup();
-inboxSetup();
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
