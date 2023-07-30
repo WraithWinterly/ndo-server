@@ -157,51 +157,64 @@ export function teamsSetup() {
     }
   });
   app.post("/join-team-from-invite", async (req: Request, res: Response) => {
-    const data = req.body as JoinTeamPOSTData;
-    // Ensure correct body data
-    if (!data) return res.sendStatus(400);
-    if (!data.fromAddress) return res.sendStatus(400);
-    if (!data.toTeamID) return res.sendStatus(400);
+    teamInvite(req, res, "accept");
+  });
+  app.post("/deny-team-from-invite", async (req: Request, res: Response) => {
+    teamInvite(req, res, "reject");
+  });
+}
 
-    try {
-      // Find target team and member
-      const teams = (await db.getData("/teams")) as Team[] | undefined;
+async function teamInvite(
+  req: Request,
+  res: Response,
+  type: "accept" | "reject"
+) {
+  const data = req.body as JoinTeamPOSTData;
+  // Ensure correct body data
+  if (!data) return res.sendStatus(400);
+  if (!data.fromAddress) return res.sendStatus(400);
+  if (!data.toTeamID) return res.sendStatus(400);
 
-      if (!teams) return res.sendStatus(400);
+  try {
+    // Find target team and member
+    const teams = (await db.getData("/teams")) as Team[] | undefined;
 
-      const team = teams.find((team) => team.id == data.toTeamID);
+    if (!teams) return res.sendStatus(400);
 
-      if (!team) return res.sendStatus(400);
+    const team = teams.find((team) => team.id == data.toTeamID);
 
-      const members = (await db.getData("/members")) as Member[];
-      if (!members) return res.sendStatus(400);
+    if (!team) return res.sendStatus(400);
 
-      const fromUser = members.find(
-        (user) => user.walletAddress == data.fromAddress
-      );
+    const members = (await db.getData("/members")) as Member[];
+    if (!members) return res.sendStatus(400);
 
-      if (!fromUser) return res.sendStatus(400);
+    const fromUser = members.find(
+      (user) => user.walletAddress == data.fromAddress
+    );
 
-      // Remove their pending invite
-      fromUser.pendingTeamInvites = fromUser.pendingTeamInvites.filter(
-        (invite) => invite.toTeamId != data.toTeamID
-      );
-      team.pendingInvites = team.pendingInvites.filter(
-        (invite) => invite != data.fromAddress
-      );
+    if (!fromUser) return res.sendStatus(400);
+
+    // Remove their pending invite
+    fromUser.pendingTeamInvites = fromUser.pendingTeamInvites.filter(
+      (invite) => invite.toTeamId != data.toTeamID
+    );
+    team.pendingInvites = team.pendingInvites.filter(
+      (invite) => invite != data.fromAddress
+    );
+    if (type === "accept") {
       // Add to team
       if (!team.members.includes(data.fromAddress)) {
         team.members.push(data.fromAddress);
       }
-
-      // Update DB
-      db.push("/teams", teams);
-      db.push("/members", members);
-      console.log("success");
-      res.sendStatus(200);
-    } catch (e) {
-      console.error(e);
-      return res.sendStatus(400);
     }
-  });
+
+    // Update DB
+    db.push("/teams", teams);
+    db.push("/members", members);
+    console.log("success");
+    res.sendStatus(200);
+  } catch (e) {
+    console.error(e);
+    return res.sendStatus(400);
+  }
 }
