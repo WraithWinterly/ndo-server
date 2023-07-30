@@ -37,9 +37,7 @@ export async function teamsSeed() {
 
 export function teamsSetup() {
   app.get("/get-teams", async (req: Request, res: Response) => {
-    const currTeams = (await db.getObjectDefault("/teams", undefined)) as
-      | Team[]
-      | undefined;
+    const currTeams = (await db.getData("/teams")) as Team[] | undefined;
     // console.log(currTeams);
     res.send(currTeams);
   });
@@ -67,10 +65,7 @@ export function teamsSetup() {
       if (!data.creatorAddress) return res.sendStatus(400);
       console.log("ere");
 
-      const users = (await db.getObjectDefault(
-        "/users",
-        undefined
-      )) as Member[];
+      const users = (await db.getData("/members")) as Member[];
       if (!users) return res.sendStatus(400);
       const user = users.find(
         (user) => user.walletAddress == data.creatorAddress
