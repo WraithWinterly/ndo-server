@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../prisma/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Define the Team model
+model Team {
+  id             String   @id @default(uuid())
+  name           String
+  description    String
+  link           String
+  members        Member[]
+  creator        Member   @relation("TeamCreator", fields: [creatorAddress], references: [walletAddress])
+  creatorAddress String
+}
+
+// Define the Project model
+model Project {
+  id          String       @id @default(uuid())
+  title       String
+  description String
+  email       String
+  phone       String
+  bounties    Bounty[]
+  bountyIDs   String[]
+  quotePrice  Int          @default(0)
+  stage       ProjectStage @default(WaitingBountyMgrQuote)
+}
+
+// Define the Bounty model
+model Bounty {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  postDate    DateTime
+
+  type                BountyType
+  deadline            DateTime
+  participantsTeamIDs String[]
+  stage               BountyStage @default(Draft)
+  submissions         String[]
+  aboutProject        String?
+  headerSections      Json?
+  reward              Int         @default(0)
+  founder             Member?     @relation("FounderBounty", fields: [founderAddress], references: [walletAddress])
+  founderAddress      String?
+  project             Project?    @relation(fields: [projectId], references: [id])
+  projectId           String?
+}
+
+// Define the Member model
+model Member {
+  username         String
+  firstName        String
+  lastName         String
+  walletAddress    String       @id @unique
+  email            String
+  bio              String
+  level            Int          @default(0)
+  roles            RoleType[]
+  playingRole      RoleType
+  bountiesWon      Int
+  teamsJoined      String[]
+  membersInvited   Int
+  completedWelcome Boolean
+  teamInvites      TeamInvite[]
+  bounties         Bounty[]     @relation("FounderBounty")
+  createdTeams     Team[]       @relation("TeamCreator")
+  teams            Team[]
+}
+
+// Define the TeamInvite model
+model TeamInvite {
+  id            String  @id @default(uuid())
+  fromAddress   String
+  fromName      String
+  toTeamId      String
+  toTeamName    String
+  member        Member? @relation(fields: [memberAddress], references: [walletAddress])
+  memberAddress String?
+}
+
+// Define the enums
+enum ProjectStage {
+  WaitingBountyMgrQuote
+  WaitingFounderPay
+  WaitingBountyDesign
+  Declined
+  Ready
+}
+
+enum BountyType {
+  Frontend
+  Backend
+  Fullstack
+  Web3
+}
+
+enum BountyStage {
+  Active
+  Draft
+  Completed
+  ReadyForTests
+}
+
+enum RoleType {
+  Founder
+  BountyHunter
+  BountyManager
+  BountyDesigner
+  BountyValidator
+}

@@ -3,12 +3,11 @@ import dotenv from "dotenv";
 import cors from "cors";
 import bodyParser from "body-parser";
 import { JsonDB, Config } from "node-json-db";
-import { bountiesSeed, bountiesSetup } from "./api/bounties";
-import { memberSeed, membersSetup } from "./api/members";
-import { teamsSeed, teamsSetup } from "./api/teams";
-import { projectsSeed, projectsSetup } from "./api/projects";
-
-export const db = new JsonDB(new Config("jsonDB", true, false, "/"));
+import { bountiesSetup } from "./api/bounties";
+import { membersSetup } from "./api/members";
+import { teamsSetup } from "./api/teams";
+import { projectsSetup } from "./api/projects";
+import seedDatabasePrisma from "./seed";
 
 dotenv.config();
 
@@ -26,22 +25,11 @@ app.use(
 app.get("/", (req: Request, res: Response) => {
   res.send("New Dev Order Development Server is running");
 });
-
-// NOT needed for actual app, used for testing data
 app.get("/seed", async (req: Request, res: Response) => {
-  await bountiesSeed();
-  await memberSeed();
-  await teamsSeed();
-  await projectsSeed();
-  console.log("[i] Database Seeded");
-  res.status(200).send();
-});
-
-// NOT needed for actual app, used for testing data
-app.get("/reload", async (req: Request, res: Response) => {
-  db.reload();
-  console.log("[i] Database Reloaded");
-  res.status(200).send();
+  console.log("[i] Starting seed");
+  await seedDatabasePrisma();
+  console.log("[i] Seeding complete");
+  res.send("Database Seeded");
 });
 
 app.get("/alive", (req: Request, res: Response) => {

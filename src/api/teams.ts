@@ -1,150 +1,162 @@
-import { app, db } from "..";
+import { app } from "..";
 import {
-  CreateTeam,
+  CreateTeamPOSTData,
   InviteToTeamPOSTData,
   JoinTeamPOSTData,
-  Member,
-  type Team,
 } from "../sharedTypes";
 import { type Request, type Response } from "express";
-import { v4 as uuid } from "uuid";
 import { InviteToTeam } from "./members";
-
-export const SAMPLE_TEAMS: Team[] = [
-  {
-    id: "3D1DADE6-1493-41CB-84DC-5F53F4860959",
-    name: "Team Solsitce",
-    description: "lorem20",
-    creatorAddress: "FC2E5GnpBUs74FtkBaf7Q36JWhbAtSspyVU2mndst7pd",
-    link: "https://aydens.net",
-    pendingInvites: [],
-    members: ["FC2E5GnpBUs74FtkBaf7Q36JWhbAtSspyVU2mndst7pd"],
-  },
-  {
-    id: "B985E4B9-2642-41E3-864F-776DC03BA8DE",
-    name: "Team Compete!!!",
-    description: "lorem20",
-    creatorAddress: "",
-    link: "https://aydens.net",
-    pendingInvites: [],
-    members: [],
-  },
-];
-
-export async function teamsSeed() {
-  await db.push("/teams", SAMPLE_TEAMS, true);
-}
+import prisma from "../prisma";
 
 export function teamsSetup() {
   app.get("/get-teams", async (req: Request, res: Response) => {
-    const currTeams = (await db.getData("/teams")) as Team[] | undefined;
+    const teams = await prisma.team.findMany({
+      include: {
+        members: {
+          select: {
+            walletAddress: true,
+          },
+        },
+      },
+    });
     // console.log(currTeams);
-    res.send(currTeams);
+    res.send(teams);
   });
   app.get("/get-team-by-id/:id", async (req: Request, res: Response) => {
-    const currTeams = (await db.getData("/teams")) as Team[] | undefined;
-    const team = currTeams?.find((team) => team.id == req.params.id);
-    console.log(currTeams);
-    console.log(req.params.id);
-    if (!team) return res.sendStatus(404);
+    if (!req.params.id) {
+      return res.status(400).json({ message: "No ID" });
+    }
+
+    const team = await prisma.team.findUnique({
+      where: {
+        id: req.params.id,
+      },
+    });
+
+    if (!team) return res.send(404).json({ message: "Team not found" });
+
     res.send(team);
   });
   app.post("/create-team", async (req: Request, res: Response) => {
-    const data = req.body as CreateTeam;
-    console.log(data);
-    try {
-      const currTeams = (await db.getData("/teams")) as Team[] | undefined;
-      if (data.name.trim().length < 3) return res.sendStatus(400);
+    const data = req.body as CreateTeamPOSTData;
 
-      if (data.description.trim().length < 3) return res.sendStatus(400);
-      if (data.link.trim().length < 3) return res.sendStatus(400);
+    try {
+      if (!data.name || data.name.trim().length < 3)
+        return res.send(400).json({
+          message: "Name must be present and at least 3 characters long",
+        });
+
+      if (data.description.trim().length < 3)
+        return res.send(400).json({
+          message: "Description must be present and at least 3 characters long",
+        });
+      if (data.link.trim().length < 3)
+        return res.send(400).json({
+          message: "Link must be present and at least 3 characters long",
+        });
 
       const linkRegex = /^(ftp|http|https):\/\/[^ "]+$/;
-      if (!linkRegex.test(data.link)) return res.sendStatus(400);
 
-      if (!data.creatorAddress) return res.sendStatus(400);
-      console.log("ere");
+      if (!linkRegex.test(data.link))
+        return res.send(400).json({
+          message: "Invalid link sent to server",
+        });
 
-      const users = (await db.getData("/members")) as Member[];
-      if (!users) return res.sendStatus(400);
-      const user = users.find(
-        (user) => user.walletAddress == data.creatorAddress
-      );
-      if (!user) return res.sendStatus(400);
+      if (!data.creatorAddress)
+        return res.send(400).json({
+          message: "No creator address provided",
+        });
 
-      const completeData: Team = {
-        ...data,
-        members: [data.creatorAddress],
-        pendingInvites: data.memberAddressesToInvite,
-        id: uuid(),
-      };
+      const user = await prisma.member.findUnique({
+        where: {
+          walletAddress: data.creatorAddress,
+        },
+      });
+
+      const createdTeam = await prisma.team.create({
+        data: {
+          name: data.name,
+          description: data.description,
+          link: data.link,
+          creator: {
+            connect: {
+              walletAddress: data.creatorAddress,
+            },
+          },
+        },
+      });
+
       // Send notification to the users
       data.memberAddressesToInvite.forEach((address) => {
         try {
           InviteToTeam({
             fromAddress: data.creatorAddress,
             fromAddressName: user.firstName,
-            teamID: completeData.id,
-            teamName: completeData.name,
+            teamID: createdTeam.id,
+            teamName: createdTeam.name,
             userAddress: address,
           });
         } catch (e) {
           console.error(e);
+          return res.sendStatus(400).json({
+            message: "Failed to send invites to members",
+          });
         }
       });
-
-      db.push("/teams", [completeData, ...currTeams]);
-      // console.log(currTeams);
-
-      console.log(completeData);
-
       res.sendStatus(200);
     } catch (e) {
       console.log(e);
-      res.sendStatus(400);
+      res.send(400).json(e);
     }
   });
   app.post("/invite-to-team", async (req: Request, res: Response) => {
     const data = req.body as InviteToTeamPOSTData;
+    console.log(data);
+    if (!data)
+      return res.send(400).json({
+        message: "No data provided",
+      });
+    if (!data.fromAddress)
+      return res.send(400).json({
+        message: "No from address provided",
+      });
 
-    if (!data) return res.sendStatus(400);
-    if (!data.fromAddress) return res.sendStatus(400);
-
-    if (!data.toAddress) return res.sendStatus(400);
-    if (!data.toTeam) return res.sendStatus(400);
+    if (!data.toAddress)
+      return res.send(400).json({
+        message: "No to address provided",
+      });
+    if (!data.toTeam)
+      return res.send(400).json({
+        message: "No to team provided",
+      });
 
     try {
-      const currTeams = (await db.getData("/teams")) as Team[] | undefined;
+      const fromUser = await prisma.member.findUnique({
+        where: {
+          walletAddress: data.fromAddress,
+        },
+      });
+      const team = await prisma.team.findUnique({
+        where: {
+          id: data.toTeam,
+        },
+      });
 
-      if (!currTeams) return res.sendStatus(400);
-      const team = currTeams.find((team) => team.id == data.toTeam);
-      if (!team) return res.sendStatus(400);
-
-      // console.log("here");
-      const users = (await db.getData("/members")) as Member[];
-      if (!users) return res.sendStatus(400);
-      const fromUser = users.find(
-        (user) => user.walletAddress == data.toAddress
-      );
-
-      if (!fromUser) return res.sendStatus(400);
-      try {
-        const error = await InviteToTeam({
-          fromAddress: data.fromAddress,
-          fromAddressName: fromUser.firstName,
-          teamID: data.toTeam,
-          teamName: team.name,
-          userAddress: data.toAddress,
-        });
-        if (error?.length > 0) {
-          return res.sendStatus(400);
-        }
-      } catch (e) {
-        console.error(e);
-        return res.sendStatus(400);
+      const error = await InviteToTeam({
+        fromAddress: data.fromAddress,
+        fromAddressName: fromUser.firstName,
+        teamID: data.toTeam,
+        teamName: team.name,
+        userAddress: data.toAddress,
+      });
+      if (error?.length > 0) {
+        console.error(error);
+        // throw error;
+        // return res.send(400).json({
+        //   message: "Failed to invite member to team",
+        // });
       }
 
-      db.push("/teams", currTeams);
       res.sendStatus(200);
     } catch (e) {
       console.error(e);
@@ -157,6 +169,22 @@ export function teamsSetup() {
   app.post("/deny-team-from-invite", async (req: Request, res: Response) => {
     teamInvite(req, res, "reject");
   });
+  app.get(
+    "/get-team-pending-invites/:id",
+    async (req: Request, res: Response) => {
+      console.log("test");
+      if (!req.params.id)
+        return res.send(400).json({
+          message: "No team ID provided",
+        });
+      const invites = await prisma.teamInvite.findMany({
+        where: {
+          toTeamId: req.params.id,
+        },
+      });
+      res.send(invites);
+    }
+  );
 }
 
 async function teamInvite(
@@ -171,42 +199,40 @@ async function teamInvite(
   if (!data.toTeamID) return res.sendStatus(400);
 
   try {
-    // Find target team and member
-    const teams = (await db.getData("/teams")) as Team[] | undefined;
-
-    if (!teams) return res.sendStatus(400);
-
-    const team = teams.find((team) => team.id == data.toTeamID);
-
-    if (!team) return res.sendStatus(400);
-
-    const members = (await db.getData("/members")) as Member[];
-    if (!members) return res.sendStatus(400);
-
-    const fromUser = members.find(
-      (user) => user.walletAddress == data.fromAddress
-    );
-
-    if (!fromUser) return res.sendStatus(400);
-
+    const team = await prisma.team.findUnique({
+      where: {
+        id: data.toTeamID,
+      },
+      include: {
+        members: true,
+      },
+    });
     // Remove their pending invite
-    fromUser.pendingTeamInvites = fromUser.pendingTeamInvites.filter(
-      (invite) => invite.toTeamId != data.toTeamID
-    );
-    team.pendingInvites = team.pendingInvites.filter(
-      (invite) => invite != data.fromAddress
-    );
+    await prisma.teamInvite.deleteMany({
+      where: {
+        fromAddress: data.fromAddress,
+        AND: {
+          toTeamId: data.toTeamID,
+        },
+      },
+    });
+
+    // If they accept, add them to the team
     if (type === "accept") {
       // Add to team
-      if (!team.members.includes(data.fromAddress)) {
-        team.members.push(data.fromAddress);
-      }
-    }
 
-    // Update DB
-    db.push("/teams", teams);
-    db.push("/members", members);
-    console.log("success");
+      await prisma.team.update({
+        where: {
+          id: team.id,
+        },
+        data: {
+          members: {
+            connect: { walletAddress: data.fromAddress },
+          },
+        },
+      });
+    }
+    console.log("Success");
     res.sendStatus(200);
   } catch (e) {
     console.error(e);
