@@ -169,10 +169,12 @@ export function membersSetup() {
     ) {
       localErrors.push("Email is required and must be valid");
     }
+
     if (localErrors.length > 0) {
       res.status(400).send(localErrors);
       return;
     }
+
     const newMember: Member = {
       username: m.username,
       firstName: m.firstName,
@@ -190,9 +192,7 @@ export function membersSetup() {
       pendingTeamInvites: [],
     };
 
-    const currMembers = (await db.getObjectDefault("/members")) as
-      | Member[]
-      | undefined;
+    const currMembers = (await db.getData("/members")) as Member[] | undefined;
 
     if (
       !!currMembers &&
@@ -201,7 +201,7 @@ export function membersSetup() {
       res.status(400).json("Member already exists");
       return;
     }
-
+    console.log("error");
     db.push("/members", [...currMembers, newMember]);
     console.log("good");
     res.status(200).send();

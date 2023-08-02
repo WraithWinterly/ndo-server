@@ -1,7 +1,7 @@
 import { app, db } from "..";
 
 import { type Request, type Response } from "express";
-import { type Bounty } from "../sharedTypes";
+import { StartBountyPOSTData, type Bounty, Team } from "../sharedTypes";
 import { SAMPLE_MEMBERS } from "./members";
 
 export const SAMPLE_BOUNTIES: Bounty[] = [
@@ -17,7 +17,7 @@ export const SAMPLE_BOUNTIES: Bounty[] = [
     reward: 100,
     deadline: new Date(),
     teamCount: 1,
-    youJoined: true,
+    participantsTeamIDs: [],
     stage: "ReadyForTests",
 
     aboutProject:
@@ -74,7 +74,7 @@ export const SAMPLE_BOUNTIES: Bounty[] = [
     reward: 50,
     deadline: new Date("2023-08-31"),
     teamCount: 1,
-    youJoined: false,
+    participantsTeamIDs: [],
     stage: "Draft",
   },
   {
@@ -89,7 +89,7 @@ export const SAMPLE_BOUNTIES: Bounty[] = [
     reward: 200,
     deadline: new Date("2023-12-31"),
     teamCount: 2,
-    youJoined: false,
+    participantsTeamIDs: [],
     stage: "Completed",
   },
   {
@@ -104,7 +104,7 @@ export const SAMPLE_BOUNTIES: Bounty[] = [
     reward: 150,
     deadline: new Date("2024-02-28"),
     teamCount: 1,
-    youJoined: false,
+    participantsTeamIDs: [],
     stage: "Active",
   },
   {
@@ -119,7 +119,7 @@ export const SAMPLE_BOUNTIES: Bounty[] = [
     reward: 75,
     deadline: new Date("2023-10-31"),
     teamCount: 3,
-    youJoined: false,
+    participantsTeamIDs: [],
     stage: "Active",
   },
 ];
@@ -130,10 +130,40 @@ export async function bountiesSeed() {
 
 export function bountiesSetup() {
   app.get("/get-bounties", async (req: Request, res: Response) => {
-    const currBounties = (await db.getObjectDefault("/bounties", undefined)) as
+    const currBounties = (await db.getData("/bounties")) as
       | Bounty[]
       | undefined;
     // console.log(currBounties);
     res.send(currBounties);
+  });
+  app.post("/start-bounty", async (req: Request, res: Response) => {
+    const { address, forTeam, bountyID } = req.body as StartBountyPOSTData;
+
+    if (!address) return res.sendStatus(400);
+    if (!forTeam) return res.sendStatus(400);
+    if (!bountyID) return res.sendStatus(400);
+    const currBounties = (await db.getData("/bounties")) as
+      | Bounty[]
+      | undefined;
+
+    const teams = (await db.getData("/teams")) as Team[] | undefined;
+
+    if (!currBounties) return res.sendStatus(400);
+    if (!teams) return res.sendStatus(400);
+
+    const team = teams.find((team) => team.id == forTeam);
+
+    if (!team) return res.sendStatus(400);
+    console.log("here");
+    const targetBounty = currBounties.find((bounty) => bounty.id == bountyID);
+
+    if (!targetBounty) return res.sendStatus(400);
+
+    if (address != team.creatorAddress) return res.sendStatus(400);
+
+    targetBounty.participantsTeamIDs.push(team.id);
+    console.log(`success started bounty for team ${team.name}`);
+    await db.push("/bounties", currBounties, true);
+    res.sendStatus(200);
   });
 }

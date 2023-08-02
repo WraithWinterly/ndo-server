@@ -1,5 +1,5 @@
 // Please do not import stuff into this file. It is shared between the client and server.
-// Only edit this file in the client repository, then copy into the server repository to avoid sync issues.
+// Only edit this file in the server repository, then copy into the client repository to avoid sync issues.
 
 // For POST Requests
 export type CreateProfile = {
@@ -76,7 +76,8 @@ export type Bounty = {
   reward: number;
   deadline: Date;
   teamCount: number;
-  youJoined: boolean;
+  // array of team Ids
+  participantsTeamIDs: string[];
   stage: "Active" | "Draft" | "Completed" | "ReadyForTests";
   submissions?: string[];
   aboutProject?: string;
@@ -114,6 +115,12 @@ export type InviteToTeamPOSTData = {
 export type JoinTeamPOSTData = {
   fromAddress: string;
   toTeamID: string;
+};
+
+export type StartBountyPOSTData = {
+  address: string;
+  forTeam: string;
+  bountyID: string;
 };
 
 export type TeamInvite = {
