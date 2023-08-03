@@ -10,7 +10,7 @@ import prisma from "../prisma";
 
 export function projectsSetup() {
   app.get("/get-projects", async (req: Request, res: Response) => {
-    const data = await prisma.project.findMany();
+    const data = (await prisma.project.findMany())?.reverse();
 
     return res.send(data);
   });
@@ -58,7 +58,9 @@ export function projectsSetup() {
       },
     });
 
-    res.sendStatus(200);
+    res.json({
+      message: "Success",
+    });
   });
   app.post(
     "/bountymgr-set-quote-price",
@@ -77,7 +79,9 @@ export function projectsSetup() {
         },
       });
 
-      res.sendStatus(200);
+      res.json({
+        message: "Success",
+      });
     }
   );
   app.post("/bountymgr-decline", async (req: Request, res: Response) => {
@@ -95,6 +99,8 @@ export function projectsSetup() {
       },
     });
 
-    res.sendStatus(200);
+    res.json({
+      message: "Success",
+    });
   });
 }

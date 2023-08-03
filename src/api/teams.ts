@@ -31,6 +31,9 @@ export function teamsSetup() {
       where: {
         id: req.params.id,
       },
+      include: {
+        members: true,
+      },
     });
 
     if (!team) return res.send(404).json({ message: "Team not found" });
@@ -103,7 +106,9 @@ export function teamsSetup() {
           });
         }
       });
-      res.sendStatus(200);
+      res.json({
+        message: "Success",
+      });
     } catch (e) {
       console.log(e);
       res.send(400).json(e);
@@ -157,7 +162,9 @@ export function teamsSetup() {
         // });
       }
 
-      res.sendStatus(200);
+      res.json({
+        message: "Success",
+      });
     } catch (e) {
       console.error(e);
       return res.sendStatus(400);
@@ -233,7 +240,9 @@ async function teamInvite(
       });
     }
     console.log("Success");
-    res.sendStatus(200);
+    res.json({
+      message: "Success",
+    });
   } catch (e) {
     console.error(e);
     return res.sendStatus(400);

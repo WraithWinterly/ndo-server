@@ -14,18 +14,24 @@ export function bountiesSetup() {
     return res.send(data);
   });
   app.get("/get-bounty-by-id/:id", async (req: Request, res: Response) => {
+    // Called when a user clicks 'view details' on a bounty. req.params.id is the Bounty ID.
+
+    // If it is not provided, return 400.
     if (!req.params.id) return res.status(400).json({ message: "No ID" });
-    console.log("here");
+
+    // Find the bounty from the database
     const bounty = await prisma.bounty.findUnique({
       where: {
         id: req.params.id as string,
       },
       include: {
+        // We need to include the project to show "Project X" on the bounty page or list.
         project: true,
+        // We include the founder for the "Meet the Founder" portion on the view bounty page.
         founder: true,
       },
     });
-    console.log(bounty);
+
     return res.send(bounty);
   });
   app.post("/start-bounty", async (req: Request, res: Response) => {
@@ -57,6 +63,8 @@ export function bountiesSetup() {
     });
 
     console.log(`success started bounty for team ${team.name}`);
-    res.sendStatus(200);
+    res.json({
+      message: "Success",
+    });
   });
 }

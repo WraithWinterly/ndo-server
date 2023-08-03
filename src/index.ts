@@ -23,17 +23,24 @@ app.use(
 );
 
 app.get("/", (req: Request, res: Response) => {
-  res.send("New Dev Order Development Server is running");
+  res.json({ message: "New Dev Order Development Server is running" });
 });
+
 app.get("/seed", async (req: Request, res: Response) => {
   console.log("[i] Starting seed");
   await seedDatabasePrisma();
   console.log("[i] Seeding complete");
-  res.send("Database Seeded");
+  res.json({ message: "Database Seeded" });
 });
 
 app.get("/alive", (req: Request, res: Response) => {
-  res.send("Alive!");
+  // res.status(400).json({ message: "Error simulation!" });
+  res.json({ message: "Alive!" });
+});
+
+app.post("/alive-post", (req: Request, res: Response) => {
+  // res.status(400).json({ message: "Error simulation!" });
+  res.json(req.body);
 });
 
 bountiesSetup();

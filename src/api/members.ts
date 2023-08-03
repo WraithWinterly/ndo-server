@@ -57,7 +57,7 @@ export function membersSetup() {
     "/get-members-by-wallet-addresses",
     async (req: Request, res: Response) => {
       // console.log("a: ");
-      const addresses = req.body.addresses as string[];
+      const addresses = req.body as string[];
 
       console.log("a: ", addresses);
       if (!addresses) {
@@ -145,7 +145,8 @@ export function membersSetup() {
       },
     });
     if (!!existingUser) {
-      res.status(400).send("Member already exists");
+      res.status(400).json({ message: "Member already exists" });
+      return;
     }
 
     await prisma.member.create({
@@ -153,7 +154,9 @@ export function membersSetup() {
     });
 
     console.log("Member created");
-    res.status(200).send();
+    res.json({
+      message: "Success",
+    });
     console.log();
   });
 }
