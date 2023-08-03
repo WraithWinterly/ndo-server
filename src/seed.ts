@@ -295,6 +295,11 @@ export default async function seedDatabasePrisma() {
           },
         ],
       },
+      founder: {
+        connect: {
+          walletAddress: member1.walletAddress,
+        },
+      },
     },
   });
 
@@ -314,6 +319,11 @@ export default async function seedDatabasePrisma() {
           },
         ],
       },
+      founder: {
+        connect: {
+          walletAddress: member1.walletAddress,
+        },
+      },
     },
   });
 
@@ -332,6 +342,11 @@ export default async function seedDatabasePrisma() {
             id: bounty5.id,
           },
         ],
+      },
+      founder: {
+        connect: {
+          walletAddress: member1.walletAddress,
+        },
       },
     },
   });

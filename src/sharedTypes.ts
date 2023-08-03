@@ -31,6 +31,7 @@ export type CreateProjectPOSTData = {
   description: string;
   email: string;
   phone: string;
+  walletAddress: string;
 };
 
 export type InviteToTeamPOSTData = {
@@ -47,6 +48,11 @@ export type StartBountyPOSTData = {
   address: string;
   forTeam: string;
   bountyID: string;
+};
+
+export type FounderConfirmPayPostData = {
+  projectID: string;
+  walletAddress: string;
 };
 
 // END For POST Requests

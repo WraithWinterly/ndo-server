@@ -2,6 +2,7 @@ import {
   CreateProjectPOSTData,
   BountyMgrSetQuotePricePOSTData,
   BountyMgrDeclineProjectPOSTData,
+  FounderConfirmPayPostData,
 } from "../sharedTypes";
 import { app } from "../";
 
@@ -11,6 +12,24 @@ import prisma from "../prisma";
 export function projectsSetup() {
   app.get("/get-projects", async (req: Request, res: Response) => {
     const data = (await prisma.project.findMany())?.reverse();
+
+    return res.send(data);
+  });
+  app.get("/get-project-by-id/:id", async (req: Request, res: Response) => {
+    if (!req.params.id) {
+      return res.send(400).json({
+        message: "No ID provided",
+      });
+    }
+
+    const data = await prisma.project.findUnique({
+      where: {
+        id: req.params.id,
+      },
+      include: {
+        founder: true,
+      },
+    });
 
     return res.send(data);
   });
@@ -46,7 +65,11 @@ export function projectsSetup() {
     }
     if (!canProceedCreateProject())
       return res.status(400).json({ message: "Invalid data" });
-
+    const founder = await prisma.member.findUnique({
+      where: {
+        walletAddress: createProjectData.walletAddress,
+      },
+    });
     await prisma.project.create({
       data: {
         title: createProjectData.title,
@@ -55,6 +78,11 @@ export function projectsSetup() {
         email: createProjectData.email,
         phone: createProjectData.phone,
         quotePrice: 0,
+        founder: {
+          connect: {
+            walletAddress: founder.walletAddress,
+          },
+        },
       },
     });
 
@@ -102,5 +130,42 @@ export function projectsSetup() {
     res.json({
       message: "Success",
     });
+  });
+  app.post("/founder-confirm-pay", async (req: Request, res: Response) => {
+    const body = req.body as FounderConfirmPayPostData;
+    if (!body) {
+      return res.sendStatus(400);
+    }
+    const project = await prisma.project.findUnique({
+      where: {
+        id: body.projectID,
+      },
+    });
+    if (!project) {
+      res.status(400).json({
+        message: "Project was not found.",
+      });
+    }
+    const member = await prisma.member.findUnique({
+      where: {
+        walletAddress: body.walletAddress,
+      },
+    });
+    if (!member) {
+      return res.status(400).json({
+        message: "Member was not found.",
+      });
+    }
+
+    if (project)
+      await prisma.project.update({
+        where: {
+          id: body.projectID,
+        },
+        data: {
+          stage: "WaitingBountyDesign",
+        },
+      });
+    res.json({ message: "Success" });
   });
 }

@@ -21,15 +21,17 @@ model Team {
 
 // Define the Project model
 model Project {
-  id          String       @id @default(uuid())
-  title       String
-  description String
-  email       String
-  phone       String
-  bounties    Bounty[]
-  bountyIDs   String[]
-  quotePrice  Int          @default(0)
-  stage       ProjectStage @default(WaitingBountyMgrQuote)
+  id                  String       @id @default(uuid())
+  title               String
+  description         String
+  email               String
+  phone               String
+  bounties            Bounty[]
+  bountyIDs           String[]
+  quotePrice          Int          @default(0)
+  stage               ProjectStage @default(WaitingBountyMgrQuote)
+  founder             Member       @relation(fields: [memberWalletAddress], references: [walletAddress])
+  memberWalletAddress String
 }
 
 // Define the Bounty model
@@ -72,6 +74,7 @@ model Member {
   bounties         Bounty[]     @relation("FounderBounty")
   createdTeams     Team[]       @relation("TeamCreator")
   teams            Team[]
+  Project          Project[]
 }
 
 // Define the TeamInvite model
