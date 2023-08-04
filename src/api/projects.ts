@@ -8,6 +8,7 @@ import { app } from "../";
 
 import { Request, Response } from "express";
 import prisma from "../prisma";
+import { ProjectStage } from "../../prisma/generated";
 
 export function projectsSetup() {
   app.get("/get-projects", async (req: Request, res: Response) => {
@@ -45,6 +46,9 @@ export function projectsSetup() {
         where: {
           projectId: req.params.id,
         },
+        include: {
+          project: true,
+        },
       });
 
       res.send(bounties);
@@ -74,7 +78,7 @@ export function projectsSetup() {
       data: {
         title: createProjectData.title,
         description: createProjectData.description,
-        stage: "WaitingBountyMgrQuote",
+        stage: ProjectStage.PendingBountyMgrQuote,
         email: createProjectData.email,
         phone: createProjectData.phone,
         quotePrice: 0,
@@ -103,7 +107,7 @@ export function projectsSetup() {
         },
         data: {
           quotePrice: body.quotePrice,
-          stage: "WaitingFounderPay",
+          stage: ProjectStage.PendingFounderPay,
         },
       });
 
@@ -163,7 +167,7 @@ export function projectsSetup() {
           id: body.projectID,
         },
         data: {
-          stage: "WaitingBountyDesign",
+          stage: ProjectStage.PendingBountyDesign,
         },
       });
     res.json({ message: "Success" });

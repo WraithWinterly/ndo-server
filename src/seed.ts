@@ -1,4 +1,4 @@
-import { BountyType, RoleType } from "../prisma/generated";
+import { BountyType, ProjectStage, RoleType } from "../prisma/generated";
 import prisma from "./prisma";
 
 export default async function seedDatabasePrisma() {
@@ -278,7 +278,7 @@ export default async function seedDatabasePrisma() {
       id: "D283300B-4B62-4142-9A8F-DB9FD1B4AEEE",
       title: "Avalanche",
       description: "lorem10",
-      stage: "WaitingBountyMgrQuote",
+      stage: ProjectStage.PendingBountyMgrQuote,
       email: "test@gmail.com",
       phone: "(207) 444-4444",
       quotePrice: 5_5000,
@@ -308,7 +308,7 @@ export default async function seedDatabasePrisma() {
     data: {
       title: "Booster",
       description: "lorem10",
-      stage: "WaitingBountyMgrQuote",
+      stage: ProjectStage.PendingBountyMgrQuote,
       email: "test@gmail.com",
       phone: "(207) 444-4444",
       quotePrice: 6_000,
@@ -332,7 +332,7 @@ export default async function seedDatabasePrisma() {
     data: {
       title: "Treasure",
       description: "lorem10",
-      stage: "WaitingBountyMgrQuote",
+      stage: ProjectStage.PendingBountyMgrQuote,
       email: "test@gmail.com",
       phone: "(207) 444-4444",
       quotePrice: 5_000,

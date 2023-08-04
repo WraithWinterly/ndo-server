@@ -29,7 +29,7 @@ model Project {
   bounties            Bounty[]
   bountyIDs           String[]
   quotePrice          Int          @default(0)
-  stage               ProjectStage @default(WaitingBountyMgrQuote)
+  stage               ProjectStage @default(PendingBountyMgrQuote)
   founder             Member       @relation(fields: [memberWalletAddress], references: [walletAddress])
   memberWalletAddress String
 }
@@ -90,9 +90,11 @@ model TeamInvite {
 
 // Define the enums
 enum ProjectStage {
-  WaitingBountyMgrQuote
-  WaitingFounderPay
-  WaitingBountyDesign
+  PendingBountyMgrQuote
+  PendingFounderPay
+  PendingBountyDesign
+  PendingBountyValidator
+  PendingApproval
   Declined
   Ready
 }
