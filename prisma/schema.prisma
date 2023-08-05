@@ -108,8 +108,9 @@ enum BountyType {
 enum BountyStage {
   Active
   Draft
-  Completed
+  PendingApproval
   ReadyForTests
+  Completed
 }
 
 enum RoleType {

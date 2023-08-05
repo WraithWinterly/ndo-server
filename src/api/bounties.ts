@@ -1,7 +1,11 @@
 import { app } from "..";
 
 import { type Request, type Response } from "express";
-import { CreateBountyPostData, StartBountyPOSTData } from "../sharedTypes";
+import {
+  CreateBountyPostData,
+  StartBountyPOSTData,
+  SubmitDraftBountyPostData,
+} from "../sharedTypes";
 import prisma from "../prisma";
 import { BountyType } from "../../prisma/generated";
 
@@ -158,7 +162,7 @@ export function bountiesSetup() {
             headerSections: body.bounty.headerSections,
             postDate: new Date(),
             types: body.bounty.types,
-            stage: body.draft ? "Draft" : "ReadyForTests",
+            stage: body.draft ? "Draft" : "PendingApproval",
             founder: {
               connect: {
                 walletAddress: project.founder.walletAddress,
@@ -171,5 +175,39 @@ export function bountiesSetup() {
 
     // Return success response
     return res.status(200).json({ message: "Bounty created successfully" });
+  });
+  app.post("/submit-bounty-draft", async (req: Request, res: Response) => {
+    const body = req.body as SubmitDraftBountyPostData;
+    const { bountyID, walletAddress } = body;
+    const member = await prisma.member.findUnique({
+      where: {
+        walletAddress,
+      },
+    });
+    if (!member) {
+      return res.status(400).json({ message: "Member not found" });
+    }
+    if (member.playingRole != "BountyDesigner") {
+      return res.status(400).json({ message: "You are not a Bounty Designer" });
+    }
+
+    const bounty = await prisma.bounty.findUnique({
+      where: {
+        id: bountyID,
+      },
+    });
+    if (!bounty) {
+      return res.status(400).json({ message: "Bounty not found" });
+    }
+
+    await prisma.bounty.update({
+      where: {
+        id: bountyID,
+      },
+      data: {
+        stage: "PendingApproval",
+      },
+    });
+    res.status(200).json({ message: "Success" });
   });
 }

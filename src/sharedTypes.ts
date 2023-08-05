@@ -67,6 +67,10 @@ export type CreateBountyPostData = {
   draft: boolean;
   walletAddress: string;
 };
+export type SubmitDraftBountyPostData = {
+  bountyID: string;
+  walletAddress: string;
+};
 
 export type StartBountyPOSTData = {
   address: string;

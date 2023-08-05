@@ -1,4 +1,9 @@
-import { BountyType, ProjectStage, RoleType } from "../prisma/generated";
+import {
+  BountyStage,
+  BountyType,
+  ProjectStage,
+  RoleType,
+} from "../prisma/generated";
 import prisma from "./prisma";
 
 export default async function seedDatabasePrisma() {
@@ -16,7 +21,7 @@ export default async function seedDatabasePrisma() {
       postDate: new Date("2021-01-01"),
       types: [BountyType.Frontend],
       deadline: new Date(),
-      stage: "Active",
+      stage: BountyStage.Active,
       aboutProject:
         "Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur, rerum.",
       headerSections: {
@@ -63,7 +68,7 @@ export default async function seedDatabasePrisma() {
       postDate: new Date("2023-07-15"),
       types: [BountyType.Web3],
       deadline: new Date("2023-08-31"),
-      stage: "Draft",
+      stage: BountyStage.Draft,
     },
   });
 
@@ -91,7 +96,7 @@ export default async function seedDatabasePrisma() {
       types: [BountyType.Backend],
       deadline: new Date("2024-02-28"),
       participantsTeamIDs: [],
-      stage: "Active",
+      stage: BountyStage.Active,
     },
   });
 
@@ -105,7 +110,7 @@ export default async function seedDatabasePrisma() {
       types: [BountyType.Fullstack],
       deadline: new Date("2023-10-31"),
       participantsTeamIDs: [],
-      stage: "Active",
+      stage: BountyStage.Active,
     },
   });
 
