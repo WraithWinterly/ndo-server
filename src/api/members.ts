@@ -168,6 +168,10 @@ export function membersSetup() {
       res.status(400).json({ message: "Wallet address is required" });
       return;
     }
+    if (!Object.values(RoleType).includes(role)) {
+      res.status(400).json({ message: "Invalid role" });
+      return;
+    }
     const member = await prisma.member.update({
       where: {
         walletAddress,
