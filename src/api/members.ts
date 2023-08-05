@@ -1,12 +1,10 @@
 import { Member, RoleType, Team } from "../../prisma/generated";
 import { app } from "../";
 
-import * as Types from "../sharedTypes";
 import { Request, Response } from "express";
 
-import { v4 as uuid } from "uuid";
 import prisma from "../prisma";
-import { isAnyArrayBuffer } from "util/types";
+import { ChangeRolePOSTData, CreateProfilePOSTData } from "../sharedTypes";
 
 export function membersSetup() {
   app.get(
@@ -97,7 +95,7 @@ export function membersSetup() {
   );
 
   app.post("/create-profile", async (req: Request, res: Response) => {
-    const m = req.body as Types.CreateProfilePOSTData;
+    const m = req.body as CreateProfilePOSTData;
 
     const localErrors: string[] = [];
     if (!m.username || m.username.trim().length < 3) {
@@ -158,6 +156,33 @@ export function membersSetup() {
       message: "Success",
     });
     console.log();
+  });
+  app.post("/change-role", async (req: Request, res: Response) => {
+    const body = req.body as ChangeRolePOSTData;
+    const { role, walletAddress } = body;
+    if (!role) {
+      res.status(400).json({ message: "Role is required" });
+      return;
+    }
+    if (!walletAddress) {
+      res.status(400).json({ message: "Wallet address is required" });
+      return;
+    }
+    const member = await prisma.member.update({
+      where: {
+        walletAddress,
+      },
+      data: {
+        playingRole: role,
+      },
+    });
+    if (member) {
+      res.json({
+        message: "Success",
+      });
+    } else {
+      res.status(400).json({ message: "Member not found" });
+    }
   });
 }
 

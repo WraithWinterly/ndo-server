@@ -1,7 +1,7 @@
 // Please do not import stuff into this file. It is shared between the client and server.
 // Only edit this file in the server repository, then copy into the client repository to avoid sync issues.
 
-import { BountyType } from "../prisma/generated";
+import { BountyType, RoleType } from "../prisma/generated";
 
 // For POST Requests
 export type CreateProfilePOSTData = {
@@ -9,6 +9,10 @@ export type CreateProfilePOSTData = {
   firstName: string;
   lastName: string;
   email: string;
+  walletAddress: string;
+};
+export type ChangeRolePOSTData = {
+  role: RoleType;
   walletAddress: string;
 };
 export type BountyMgrSetQuotePricePOSTData = {
