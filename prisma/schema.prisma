@@ -47,11 +47,16 @@ model Bounty {
   submissions         String[]
   aboutProject        String?
   headerSections      Json?
-  reward              Int          @default(0)
-  founder             Member?      @relation("FounderBounty", fields: [founderAddress], references: [walletAddress])
-  founderAddress      String?
-  project             Project?     @relation(fields: [projectId], references: [id])
-  projectId           String?
+
+  approvedByFounder   Boolean @default(false)
+  approvedByManager   Boolean @default(false)
+  approvedByValidator Boolean @default(false)
+
+  reward         Int      @default(0)
+  founder        Member?  @relation("FounderBounty", fields: [founderAddress], references: [walletAddress])
+  founderAddress String?
+  project        Project? @relation(fields: [projectId], references: [id])
+  projectId      String?
 }
 
 // Define the Member model

@@ -2,12 +2,18 @@ import { app } from "..";
 
 import { type Request, type Response } from "express";
 import {
+  SetApproveBountyPostData,
   CreateBountyPostData,
   StartBountyPOSTData,
   SubmitDraftBountyPostData,
 } from "../sharedTypes";
 import prisma from "../prisma";
-import { BountyType } from "../../prisma/generated";
+import {
+  Bounty,
+  BountyStage,
+  BountyType,
+  RoleType,
+} from "../../prisma/generated";
 
 export function bountiesSetup() {
   app.get("/get-bounties", async (req: Request, res: Response) => {
@@ -208,6 +214,110 @@ export function bountiesSetup() {
         stage: "PendingApproval",
       },
     });
+    res.status(200).json({ message: "Success" });
+  });
+  app.post("/set-bounty-approval", async (req: Request, res: Response) => {
+    const body = req.body as SetApproveBountyPostData;
+    const { bountyID, walletAddress, approve } = body;
+    if (!bountyID) {
+      return res.status(400).json({ message: "bountyID is missing" });
+    }
+    if (!walletAddress) {
+      return res.status(400).json({ message: "walletAddress is missing" });
+    }
+    if (typeof approve !== "boolean") {
+      return res.status(400).json({ message: "Approve must be a boolean" });
+    }
+    const member = await prisma.member.findUnique({
+      where: {
+        walletAddress,
+      },
+    });
+    if (!member) {
+      return res.status(400).json({ message: "Member not found" });
+    }
+    const allowedApprovedRoles = [
+      RoleType.BountyManager,
+      RoleType.BountyValidator,
+      RoleType.Founder,
+    ];
+    // @ts-expect-error Allow this type of search with enum
+    if (!allowedApprovedRoles.includes(member.playingRole)) {
+      return res
+        .status(400)
+        .json({ message: "You are not allowed to approve this bounty" });
+    }
+    let updatedBounty: null | Bounty = null;
+
+    const bounty = await prisma.bounty.findUnique({
+      where: {
+        id: bountyID,
+      },
+    });
+
+    if (!bounty) {
+      return res.status(400).json({ message: "Bounty not found" });
+    }
+
+    if (bounty.stage !== BountyStage.PendingApproval) {
+      return res
+        .status(400)
+        .json({ message: "Bounty is not pending approvals anymore!" });
+    }
+
+    switch (member.playingRole) {
+      case RoleType.Founder:
+        updatedBounty = await prisma.bounty.update({
+          where: {
+            id: bountyID,
+          },
+          data: {
+            approvedByFounder: approve ? true : false,
+          },
+        });
+
+        break;
+      case RoleType.BountyManager:
+        updatedBounty = await prisma.bounty.update({
+          where: {
+            id: bountyID,
+          },
+          data: {
+            approvedByManager: approve ? true : false,
+          },
+        });
+        break;
+      case RoleType.BountyValidator:
+        updatedBounty = await prisma.bounty.update({
+          where: {
+            id: bountyID,
+          },
+          data: {
+            approvedByValidator: approve ? true : false,
+          },
+        });
+        break;
+    }
+    if (!updatedBounty) {
+      return res.status(400).json({
+        message:
+          "Something went wrong with updating the bounty approval status...",
+      });
+    }
+    if (
+      updatedBounty.approvedByFounder &&
+      updatedBounty.approvedByManager &&
+      updatedBounty.approvedByValidator
+    ) {
+      await prisma.bounty.update({
+        where: {
+          id: bountyID,
+        },
+        data: {
+          stage: "ReadyForTests",
+        },
+      });
+    }
     res.status(200).json({ message: "Success" });
   });
 }

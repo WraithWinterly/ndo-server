@@ -1,6 +1,7 @@
 // Please do not import stuff into this file. It is shared between the client and server.
 // Only edit this file in the server repository, then copy into the client repository to avoid sync issues.
 
+import e from "express";
 import { BountyType, RoleType } from "../prisma/generated";
 
 // For POST Requests
@@ -70,6 +71,11 @@ export type CreateBountyPostData = {
 export type SubmitDraftBountyPostData = {
   bountyID: string;
   walletAddress: string;
+};
+export type SetApproveBountyPostData = {
+  bountyID: string;
+  walletAddress: string;
+  approve: boolean;
 };
 
 export type StartBountyPOSTData = {
