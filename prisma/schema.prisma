@@ -36,22 +36,21 @@ model Project {
 
 // Define the Bounty model
 model Bounty {
-  id          String   @id @default(uuid())
-  title       String
-  description String
-  postDate    DateTime
-
-  type                BountyType
+  id                  String       @id @default(uuid())
+  title               String
+  description         String
+  postDate            DateTime
+  types               BountyType[]
   deadline            DateTime
   participantsTeamIDs String[]
-  stage               BountyStage @default(Draft)
+  stage               BountyStage  @default(Draft)
   submissions         String[]
   aboutProject        String?
   headerSections      Json?
-  reward              Int         @default(0)
-  founder             Member?     @relation("FounderBounty", fields: [founderAddress], references: [walletAddress])
+  reward              Int          @default(0)
+  founder             Member?      @relation("FounderBounty", fields: [founderAddress], references: [walletAddress])
   founderAddress      String?
-  project             Project?    @relation(fields: [projectId], references: [id])
+  project             Project?     @relation(fields: [projectId], references: [id])
   projectId           String?
 }
 

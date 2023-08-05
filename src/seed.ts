@@ -14,9 +14,9 @@ export default async function seedDatabasePrisma() {
       description:
         "Build working and deployable code and final software package for Front-End Cross-Platform application, built using Flutter.",
       postDate: new Date("2021-01-01"),
-      type: "Frontend",
+      types: [BountyType.Frontend],
       deadline: new Date(),
-      stage: "ReadyForTests",
+      stage: "Active",
       aboutProject:
         "Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur, rerum.",
       headerSections: {
@@ -61,7 +61,7 @@ export default async function seedDatabasePrisma() {
       description:
         "Do you love emojis? We need someone to develop an emoji translator that can convert text into emojis and vice versa. Let's make communication more fun!",
       postDate: new Date("2023-07-15"),
-      type: "Web3",
+      types: [BountyType.Web3],
       deadline: new Date("2023-08-31"),
       stage: "Draft",
     },
@@ -74,7 +74,7 @@ export default async function seedDatabasePrisma() {
       description:
         "Ever wished you could go back in time? We want you to build a website that simulates time travel. Let users experience historical events as if they were there!",
       postDate: new Date("2023-07-14"),
-      type: "Fullstack",
+      types: [BountyType.Web3],
       deadline: new Date("2023-12-31"),
       participantsTeamIDs: [],
       stage: "Completed",
@@ -88,7 +88,7 @@ export default async function seedDatabasePrisma() {
       description:
         "Are you a programming genius with a great sense of humor? We're looking for someone to create an AI stand-up comedian that can crack jokes about coding and technology. Make the nerds laugh!",
       postDate: new Date("2023-07-13"),
-      type: "Backend",
+      types: [BountyType.Backend],
       deadline: new Date("2024-02-28"),
       participantsTeamIDs: [],
       stage: "Active",
@@ -102,7 +102,7 @@ export default async function seedDatabasePrisma() {
       description:
         "Calling all puzzle enthusiasts and code breakers! We have a mysterious device that needs to be reverse-engineered. Solve the puzzle and unveil its secrets!",
       postDate: new Date("2023-07-12"),
-      type: "Web3",
+      types: [BountyType.Fullstack],
       deadline: new Date("2023-10-31"),
       participantsTeamIDs: [],
       stage: "Active",
@@ -128,7 +128,7 @@ export default async function seedDatabasePrisma() {
         RoleType.BountyManager,
         RoleType.BountyValidator,
       ],
-      walletAddress: "FFC2E5GnpBUs74FtkBaf7Q36JWhbAtSspyVU2mndst7pd",
+      walletAddress: "FC2E5GnpBUs74FtkBaf7Q36JWhbAtSspyVU2mndst7pd",
     },
   });
 
