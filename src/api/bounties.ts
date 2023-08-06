@@ -7,6 +7,7 @@ import {
   StartBountyPOSTData,
   SubmitDraftBountyPostData,
   SetTestCasesPostData,
+  SubmitDeliverablesPostData,
 } from "../sharedTypes";
 import prisma from "../prisma";
 import {
@@ -375,6 +376,119 @@ export function bountiesSetup() {
         testCases: testCases,
       },
     });
+    res.status(200).json({ message: "Success" });
+  });
+  app.get("/get-submission/:id", async (req: Request, res: Response) => {
+    if (!req.params.id) {
+      return res.status(400).json({
+        message: "id of team, walletAddress seperated by comma is missing",
+      });
+    }
+    const ids = req.params.id.split(",");
+    const teamId = ids[0];
+    const bountyId = ids[1];
+    const walletAddress = ids[2];
+    console.log(ids);
+    if (!teamId || !bountyId || !walletAddress) {
+      return res.status(400).json({
+        message: "id of team, walletAddress seperated by comma is missing",
+      });
+    }
+
+    const submissions = await prisma.submission.findFirst({
+      where: {
+        teamId,
+        AND: {
+          team: {
+            creatorAddress: walletAddress,
+          },
+          AND: {
+            bountyId,
+          },
+        },
+      },
+    });
+    console.log(submissions);
+    res.send(submissions);
+  });
+  app.post("/submit-deliverables", async (req: Request, res: Response) => {
+    console.log("here");
+    const body = req.body as SubmitDeliverablesPostData;
+    const { bountyID, teamID, walletAddress, videoDemo, repo } = body;
+    if (!bountyID) {
+      return res.status(400).json({ message: "bountyID is missing" });
+    }
+    if (!teamID) {
+      return res.status(400).json({ message: "teamID is missing" });
+    }
+    if (!walletAddress) {
+      return res.status(400).json({ message: "walletAddress is missing" });
+    }
+    if (!videoDemo || !repo) {
+      return res
+        .status(400)
+        .json({ message: "deliverables is missing or invalid" });
+    }
+    const member = await prisma.member.findUnique({
+      where: {
+        walletAddress,
+      },
+    });
+    if (!member) {
+      return res.status(400).json({ message: "Member not found" });
+    }
+
+    // Verify they are creator of the team
+    const team = await prisma.team.findUnique({
+      where: {
+        id: teamID,
+      },
+    });
+    if (!team) {
+      return res.status(400).json({ message: "Team not found" });
+    }
+    if (team.creatorAddress !== walletAddress) {
+      return res.status(400).json({
+        message: "You are not a authorized to submit delierables for the team",
+      });
+    }
+
+    const bounty = await prisma.bounty.findUnique({
+      where: {
+        id: bountyID,
+      },
+    });
+    if (!bounty) {
+      return res.status(400).json({ message: "Bounty not found" });
+    }
+    if (bounty.stage !== BountyStage.Active) {
+      return res.status(400).json({ message: "Bounty is not active anymore!" });
+    }
+    await prisma.submission.deleteMany({
+      where: {
+        teamId: teamID,
+        AND: {
+          bountyId: bountyID,
+        },
+      },
+    });
+    await prisma.submission.create({
+      data: {
+        repo: repo,
+        videoDemo: videoDemo,
+        bounty: {
+          connect: {
+            id: bountyID,
+          },
+        },
+        team: {
+          connect: {
+            id: teamID,
+          },
+        },
+      },
+    });
+
     res.status(200).json({ message: "Success" });
   });
 }

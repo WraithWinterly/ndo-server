@@ -77,6 +77,13 @@ export type SetApproveBountyPostData = {
   walletAddress: string;
   approve: boolean;
 };
+export type SubmitDeliverablesPostData = {
+  bountyID: string;
+  teamID: string;
+  walletAddress: string;
+  videoDemo: string;
+  repo: string;
+};
 export type SetTestCasesPostData = {
   bountyID: string;
   walletAddress: string;

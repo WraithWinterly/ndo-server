@@ -10,13 +10,14 @@ datasource db {
 
 // Define the Team model
 model Team {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   name           String
   description    String
   link           String
   members        Member[]
-  creator        Member   @relation("TeamCreator", fields: [creatorAddress], references: [walletAddress])
+  creator        Member       @relation("TeamCreator", fields: [creatorAddress], references: [walletAddress])
   creatorAddress String
+  Submission     Submission[]
 }
 
 // Define the Project model
@@ -45,7 +46,7 @@ model Bounty {
   participantsTeamIDs String[]
   testCases           String[]
   stage               BountyStage  @default(Draft)
-  submissions         String[]
+  submissions         Submission[]
   aboutProject        String?
   headerSections      Json?
 
@@ -58,6 +59,16 @@ model Bounty {
   founderAddress String?
   project        Project? @relation(fields: [projectId], references: [id])
   projectId      String?
+}
+
+model Submission {
+  id        String @id @default(uuid())
+  videoDemo String
+  repo      String
+  bounty    Bounty @relation(fields: [bountyId], references: [id])
+  bountyId  String
+  team      Team   @relation(fields: [teamId], references: [id])
+  teamId    String
 }
 
 // Define the Member model
