@@ -6,6 +6,7 @@ import {
   CreateBountyPostData,
   StartBountyPOSTData,
   SubmitDraftBountyPostData,
+  SetTestCasesPostData,
 } from "../sharedTypes";
 import prisma from "../prisma";
 import {
@@ -314,10 +315,66 @@ export function bountiesSetup() {
           id: bountyID,
         },
         data: {
-          stage: "ReadyForTests",
+          stage: "Active",
+        },
+      });
+      await prisma.project.update({
+        where: {
+          id: bounty.projectId,
+        },
+        data: {
+          stage: "Ready",
         },
       });
     }
+    res.status(200).json({ message: "Success" });
+  });
+  app.post("/add-test-cases", async (req: Request, res: Response) => {
+    const body = req.body as SetTestCasesPostData;
+    const { bountyID, walletAddress, testCases } = body;
+    if (!bountyID) {
+      return res.status(400).json({ message: "bountyID is missing" });
+    }
+    if (!walletAddress) {
+      return res.status(400).json({ message: "walletAddress is missing" });
+    }
+    if (!testCases || !Array.isArray(testCases)) {
+      return res
+        .status(400)
+        .json({ message: "testCases is missing or invalid" });
+    }
+    const member = await prisma.member.findUnique({
+      where: {
+        walletAddress,
+      },
+    });
+    if (!member) {
+      return res.status(400).json({ message: "Member not found" });
+    }
+    if (member.playingRole != RoleType.BountyValidator) {
+      return res
+        .status(400)
+        .json({ message: "You are not allowed to add test cases." });
+    }
+    const bounty = await prisma.bounty.findUnique({
+      where: {
+        id: bountyID,
+      },
+    });
+    if (!bounty) {
+      return res.status(400).json({ message: "Bounty not found" });
+    }
+    if (bounty.stage !== BountyStage.Active) {
+      return res.status(400).json({ message: "Bounty is not active anymore!" });
+    }
+    const updatedBounty = await prisma.bounty.update({
+      where: {
+        id: bountyID,
+      },
+      data: {
+        testCases: testCases,
+      },
+    });
     res.status(200).json({ message: "Success" });
   });
 }

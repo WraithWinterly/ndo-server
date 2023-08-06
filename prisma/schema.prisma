@@ -43,6 +43,7 @@ model Bounty {
   types               BountyType[]
   deadline            DateTime
   participantsTeamIDs String[]
+  testCases           String[]
   stage               BountyStage  @default(Draft)
   submissions         String[]
   aboutProject        String?
@@ -114,7 +115,6 @@ enum BountyStage {
   Active
   Draft
   PendingApproval
-  ReadyForTests
   Completed
 }
 

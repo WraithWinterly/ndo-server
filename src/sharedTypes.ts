@@ -77,6 +77,11 @@ export type SetApproveBountyPostData = {
   walletAddress: string;
   approve: boolean;
 };
+export type SetTestCasesPostData = {
+  bountyID: string;
+  walletAddress: string;
+  testCases: string[];
+};
 
 export type StartBountyPOSTData = {
   address: string;
