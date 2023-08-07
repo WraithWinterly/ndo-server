@@ -57,7 +57,6 @@ export function membersSetup() {
       // console.log("a: ");
       const addresses = req.body as string[];
 
-      console.log("a: ", addresses);
       if (!addresses) {
         res.status(400).json({
           message: "No addresses provided",
@@ -74,7 +73,7 @@ export function membersSetup() {
         return;
       }
 
-      console.log("addresses: ", addresses);
+      // console.log("addresses: ", addresses);
 
       const members = await prisma.member.findMany({
         where: {

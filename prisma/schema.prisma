@@ -62,13 +62,23 @@ model Bounty {
 }
 
 model Submission {
-  id        String @id @default(uuid())
+  id        String     @id @default(uuid())
   videoDemo String
   repo      String
-  bounty    Bounty @relation(fields: [bountyId], references: [id])
+  createdAt DateTime   @default(now())
+  testCases TestCase[]
+  bounty    Bounty     @relation(fields: [bountyId], references: [id])
   bountyId  String
-  team      Team   @relation(fields: [teamId], references: [id])
+  team      Team       @relation(fields: [teamId], references: [id])
   teamId    String
+}
+
+model TestCase {
+  id           String      @id @default(uuid())
+  text         String
+  approved     Boolean     @default(false)
+  submission   Submission? @relation(fields: [submissionId], references: [id])
+  submissionId String?
 }
 
 // Define the Member model

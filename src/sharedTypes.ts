@@ -2,7 +2,7 @@
 // Only edit this file in the server repository, then copy into the client repository to avoid sync issues.
 
 import e from "express";
-import { BountyType, RoleType } from "../prisma/generated";
+import { BountyType, RoleType, TestCase } from "../prisma/generated";
 
 // For POST Requests
 export type CreateProfilePOSTData = {
@@ -84,6 +84,12 @@ export type SubmitDeliverablesPostData = {
   videoDemo: string;
   repo: string;
 };
+export type ApproveTestCasePostData = {
+  submissionID: string;
+  walletAddress: string;
+  testCases: TestCase[];
+};
+
 export type SetTestCasesPostData = {
   bountyID: string;
   walletAddress: string;

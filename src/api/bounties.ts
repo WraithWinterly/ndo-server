@@ -8,6 +8,7 @@ import {
   SubmitDraftBountyPostData,
   SetTestCasesPostData,
   SubmitDeliverablesPostData,
+  ApproveTestCasePostData,
 } from "../sharedTypes";
 import prisma from "../prisma";
 import {
@@ -42,6 +43,11 @@ export function bountiesSetup() {
         project: true,
         // We include the founder for the "Meet the Founder" portion on the view bounty page.
         founder: true,
+        submissions: {
+          include: {
+            team: true,
+          },
+        },
       },
     });
 
@@ -375,23 +381,55 @@ export function bountiesSetup() {
       data: {
         testCases: testCases,
       },
+      include: {
+        submissions: true,
+      },
+    });
+    if (!updatedBounty) {
+      return res
+        .status(400)
+        .json({ message: "Something went wrong updating the bounty" });
+    }
+    await prisma.testCase.deleteMany({
+      where: {
+        submission: {
+          bountyId: bountyID,
+        },
+      },
+    });
+    updatedBounty.submissions.forEach(async (submission) => {
+      updatedBounty.testCases.forEach(async (testCase) => {
+        await prisma.testCase.create({
+          data: {
+            text: testCase,
+            approved: false,
+            submission: {
+              connect: {
+                id: submission.id,
+              },
+            },
+          },
+        });
+      });
     });
     res.status(200).json({ message: "Success" });
   });
   app.get("/get-submission/:id", async (req: Request, res: Response) => {
     if (!req.params.id) {
       return res.status(400).json({
-        message: "id of team, walletAddress seperated by comma is missing",
+        message:
+          "teamID, bountyId, walletAddress separated by comma is missing",
       });
     }
     const ids = req.params.id.split(",");
     const teamId = ids[0];
     const bountyId = ids[1];
     const walletAddress = ids[2];
-    console.log(ids);
+
     if (!teamId || !bountyId || !walletAddress) {
       return res.status(400).json({
-        message: "id of team, walletAddress seperated by comma is missing",
+        message:
+          "teamID, bountyId, walletAddress separated by comma is missing",
       });
     }
 
@@ -408,11 +446,10 @@ export function bountiesSetup() {
         },
       },
     });
-    console.log(submissions);
+
     res.send(submissions);
   });
   app.post("/submit-deliverables", async (req: Request, res: Response) => {
-    console.log("here");
     const body = req.body as SubmitDeliverablesPostData;
     const { bountyID, teamID, walletAddress, videoDemo, repo } = body;
     if (!bountyID) {
@@ -449,7 +486,7 @@ export function bountiesSetup() {
     }
     if (team.creatorAddress !== walletAddress) {
       return res.status(400).json({
-        message: "You are not a authorized to submit delierables for the team",
+        message: "You are not a authorized to submit deliverables for the team",
       });
     }
 
@@ -472,7 +509,7 @@ export function bountiesSetup() {
         },
       },
     });
-    await prisma.submission.create({
+    const submission = await prisma.submission.create({
       data: {
         repo: repo,
         videoDemo: videoDemo,
@@ -486,9 +523,120 @@ export function bountiesSetup() {
             id: teamID,
           },
         },
+        testCases: {},
+      },
+    });
+    bounty.testCases.forEach(async (testCase) => {
+      await prisma.testCase.create({
+        data: {
+          text: testCase,
+          approved: false,
+          submission: {
+            connect: {
+              id: submission.id,
+            },
+          },
+        },
+      });
+    });
+
+    res.status(200).json({ message: "Success" });
+  });
+  app.get("/get-test-cases/:id", async (req: Request, res: Response) => {
+    if (!req.params.id) {
+      return res.status(400).json({
+        message: "submissionId, walletAddress separated by comma is missing",
+      });
+    }
+    const ids = req.params.id.split(",");
+    const submissionId = ids[0];
+    const walletAddress = ids[1];
+
+    if (!submissionId || !walletAddress) {
+      return res.status(400).json({
+        message: "id of team, walletAddress separated by comma is missing",
+      });
+    }
+    const member = await prisma.member.findUnique({
+      where: {
+        walletAddress,
+      },
+    });
+    if (!member) {
+      return res.status(400).json({ message: "Member not found" });
+    }
+    if (member.playingRole != RoleType.BountyValidator) {
+      return res
+        .status(400)
+        .json({ message: "You are not allowed to view test cases." });
+    }
+
+    const testCases = await prisma.testCase.findMany({
+      where: {
+        submission: {
+          id: submissionId,
+        },
       },
     });
 
+    res.send(testCases);
+  });
+  app.post("/approve-test-cases", async (req: Request, res: Response) => {
+    const body = req.body as ApproveTestCasePostData;
+
+    const { submissionID, walletAddress, testCases } = body;
+    if (!submissionID) {
+      return res.status(400).json({ message: "submissionID is missing" });
+    }
+    if (!walletAddress) {
+      return res.status(400).json({ message: "walletAddress is missing" });
+    }
+    if (!testCases || !Array.isArray(testCases)) {
+      return res
+        .status(400)
+        .json({ message: "testCases is missing or invalid" });
+    }
+    const member = await prisma.member.findUnique({
+      where: {
+        walletAddress,
+      },
+    });
+    if (!member) {
+      return res.status(400).json({ message: "Member not found" });
+    }
+    if (member.playingRole != RoleType.BountyValidator) {
+      return res
+        .status(400)
+        .json({ message: "You are not allowed to approve test cases." });
+    }
+    // Ensure these test cases are not bogus, they are actual test cases
+    const submission = await prisma.submission.findUnique({
+      where: {
+        id: submissionID,
+      },
+      include: {
+        bounty: true,
+      },
+    });
+
+    const validCases = testCases.filter((testCase) =>
+      submission.bounty.testCases.includes(testCase.text)
+    );
+
+    if (validCases.length != submission.bounty.testCases.length) {
+      return res.status(400).json({ message: "Invalid test cases" });
+    }
+
+    testCases.forEach(async (testCase) => {
+      await prisma.testCase.update({
+        where: {
+          id: testCase.id,
+        },
+        data: {
+          approved: testCase.approved,
+        },
+      });
+    });
     res.status(200).json({ message: "Success" });
   });
 }
