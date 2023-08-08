@@ -9,12 +9,15 @@ import {
   SetTestCasesPostData,
   SubmitDeliverablesPostData,
   ApproveTestCasePostData,
+  SelectWinningSubmissionPostData,
+  ApproveDisapproveBountyWinnerPostData,
 } from "../sharedTypes";
 import prisma from "../prisma";
 import {
   Bounty,
   BountyStage,
   BountyType,
+  BountyWinner,
   RoleType,
 } from "../../prisma/generated";
 
@@ -639,4 +642,181 @@ export function bountiesSetup() {
     });
     res.status(200).json({ message: "Success" });
   });
+  app.post(
+    "/validator-select-winning-submission",
+    async (req: Request, res: Response) => {
+      const body = req.body as SelectWinningSubmissionPostData;
+      const { submissionID, walletAddress } = body;
+      if (!submissionID) {
+        return res.status(400).json({ message: "submissionID is missing" });
+      }
+      if (!walletAddress) {
+        return res.status(400).json({ message: "walletAddress is missing" });
+      }
+      const member = await prisma.member.findUnique({
+        where: {
+          walletAddress,
+        },
+      });
+      if (!member) {
+        return res.status(400).json({ message: "Member not found" });
+      }
+      if (member.playingRole != RoleType.BountyValidator) {
+        return res.status(400).json({
+          message: "You are not allowed to select the winning submission.",
+        });
+      }
+      const submission = await prisma.submission.findUnique({
+        where: {
+          id: submissionID,
+        },
+        include: {
+          bounty: true,
+          team: true,
+        },
+      });
+      if (!submission) {
+        return res.status(400).json({ message: "Submission not found" });
+      }
+      if (submission.bounty.stage !== BountyStage.Active) {
+        return res.status(400).json({ message: "Bounty is not active" });
+      }
+      if (submission.team.creatorAddress !== walletAddress) {
+        return res.status(400).json({
+          message: "You are not a authorized to select the winning submission.",
+        });
+      }
+      const winner = await prisma.bountyWinner.findMany({
+        where: {
+          member: {
+            walletAddress: submission.team.creatorAddress,
+          },
+          bounty: {
+            id: submission.bountyId,
+          },
+        },
+      });
+      console.log("here");
+      console.log(winner);
+      if (winner.length > 0) {
+        return res.status(400).json({
+          message: "You have already selected the winning submission.",
+        });
+      }
+      await prisma.bountyWinner.create({
+        data: {
+          member: {
+            connect: {
+              walletAddress: submission.team.creatorAddress,
+            },
+          },
+          submissionId: submissionID,
+          bounty: {
+            connect: {
+              id: submission.bountyId,
+            },
+          },
+        },
+      });
+      res.status(200).json({ message: "Success" });
+    }
+  );
+  app.get("/get-winner-by-bounty/:id", async (req: Request, res: Response) => {
+    if (!req.params.id) {
+      return res.status(400).json({
+        message: "bountyID is missing",
+      });
+    }
+    const bountyID = req.params.id;
+    const bounty = await prisma.bountyWinner.findUnique({
+      where: {
+        bountyId: bountyID,
+      },
+    });
+
+    res.send(bounty);
+  });
+  app.post(
+    "/approve-disapprove-bounty-winner",
+    async (req: Request, res: Response) => {
+      const body = req.body as ApproveDisapproveBountyWinnerPostData;
+      const { submissionID, walletAddress, approve } = body;
+      if (!submissionID) {
+        return res.status(400).json({ message: "submissionID is missing" });
+      }
+      if (!walletAddress) {
+        return res.status(400).json({ message: "walletAddress is missing" });
+      }
+      if (typeof approve !== "boolean") {
+        return res
+          .status(400)
+          .json({ message: "approve is missing or invalid" });
+      }
+      const member = await prisma.member.findUnique({
+        where: {
+          walletAddress,
+        },
+      });
+      if (!member) {
+        return res.status(400).json({ message: "Member not found" });
+      }
+      if (
+        member.playingRole != RoleType.BountyValidator &&
+        member.playingRole != RoleType.BountyManager &&
+        member.playingRole != RoleType.Founder
+      ) {
+        return res.status(400).json({
+          message:
+            "You are not allowed to approve or disapprove bounty winners.",
+        });
+      }
+      const submission = await prisma.submission.findUnique({
+        where: {
+          id: submissionID,
+        },
+        include: {
+          bounty: true,
+          team: true,
+        },
+      });
+      if (!submission) {
+        return res.status(400).json({ message: "Submission not found" });
+      }
+      if (submission.bounty.stage !== BountyStage.Active) {
+        return res.status(400).json({ message: "Bounty is not active" });
+      }
+      if (approve === false) {
+        await prisma.bountyWinner.delete({
+          where: {
+            bountyId: submission.bountyId,
+          },
+        });
+      } else {
+        let data: BountyWinner | undefined;
+        if (member.playingRole === RoleType.Founder) {
+          data = await prisma.bountyWinner.update({
+            where: {
+              bountyId: submission.bountyId,
+            },
+            data: {
+              approvedByFounder: true,
+            },
+          });
+        } else if (member.playingRole === RoleType.BountyManager) {
+          data = await prisma.bountyWinner.update({
+            where: {
+              bountyId: submission.bountyId,
+            },
+            data: {
+              approvedByManager: true,
+            },
+          });
+        }
+        if (data.approvedByFounder && data.approvedByManager) {
+          // We know its confirmed
+        }
+      }
+      res.status(200).json({ message: "Success" });
+    }
+  );
 }

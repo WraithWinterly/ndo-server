@@ -84,6 +84,15 @@ export type SubmitDeliverablesPostData = {
   videoDemo: string;
   repo: string;
 };
+export type SelectWinningSubmissionPostData = {
+  submissionID: string;
+  walletAddress: string;
+};
+export type ApproveDisapproveBountyWinnerPostData = {
+  submissionID: string;
+  walletAddress: string;
+  approve: boolean;
+};
 export type ApproveTestCasePostData = {
   submissionID: string;
   walletAddress: string;
