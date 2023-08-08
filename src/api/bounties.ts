@@ -46,10 +46,20 @@ export function bountiesSetup() {
         project: true,
         // We include the founder for the "Meet the Founder" portion on the view bounty page.
         founder: true,
+        winningSubmission: {
+          include: {
+            team: true,
+          },
+        },
         submissions: {
           include: {
             team: true,
           },
+
+          // select: {
+          //   // TODO: only allow validator to see this
+          //   repo: true,
+          // },
         },
       },
     });
@@ -72,8 +82,14 @@ export function bountiesSetup() {
       return res
         .sendStatus(400)
         .json({ message: "You are not the team owner." });
-
-    const bounty = await prisma.bounty.update({
+    const bounty = await prisma.bounty.findUnique({
+      where: {
+        id: bountyID,
+      },
+    });
+    if (bounty.stage !== BountyStage.Active)
+      return res.sendStatus(400).json({ message: "Bounty not active" });
+    await prisma.bounty.update({
       where: {
         id: bountyID,
       },
@@ -568,7 +584,11 @@ export function bountiesSetup() {
     if (!member) {
       return res.status(400).json({ message: "Member not found" });
     }
-    if (member.playingRole != RoleType.BountyValidator) {
+    if (
+      member.playingRole != RoleType.BountyValidator &&
+      member.playingRole != RoleType.BountyManager &&
+      member.playingRole != RoleType.Founder
+    ) {
       return res
         .status(400)
         .json({ message: "You are not allowed to view test cases." });
@@ -814,6 +834,34 @@ export function bountiesSetup() {
         }
         if (data.approvedByFounder && data.approvedByManager) {
           // We know its confirmed
+          await prisma.bounty.update({
+            where: {
+              id: submission.bountyId,
+            },
+            data: {
+              stage: BountyStage.Completed,
+            },
+          });
+          await prisma.bountyWinner.update({
+            where: {
+              id: data.id,
+            },
+            data: {
+              confirmed: true,
+            },
+          });
+          await prisma.bounty.update({
+            where: {
+              id: data.id,
+            },
+            data: {
+              winningSubmission: {
+                connect: {
+                  id: submission.id,
+                },
+              },
+            },
+          });
         }
       }
       res.status(200).json({ message: "Success" });

@@ -46,9 +46,12 @@ model Bounty {
   participantsTeamIDs String[]
   testCases           String[]
   stage               BountyStage  @default(Draft)
-  submissions         Submission[]
+  submissions         Submission[] @relation("Submission")
   aboutProject        String?
   headerSections      Json?
+
+  winningSubmission   Submission? @relation("WinningSubmission", fields: [winningSubmissionId], references: [id])
+  winningSubmissionId String?     @unique
 
   approvedByFounder   Boolean @default(false)
   approvedByManager   Boolean @default(false)
@@ -68,10 +71,12 @@ model Submission {
   repo      String
   createdAt DateTime   @default(now())
   testCases TestCase[]
-  bounty    Bounty     @relation(fields: [bountyId], references: [id])
+  bounty    Bounty     @relation("Submission", fields: [bountyId], references: [id])
   bountyId  String
   team      Team       @relation(fields: [teamId], references: [id])
   teamId    String
+
+  winningSubmission Bounty? @relation("WinningSubmission")
 }
 
 model TestCase {
@@ -106,12 +111,13 @@ model Member {
 }
 
 model BountyWinner {
-  id            String @id @default(uuid())
-  bounty        Bounty @relation(fields: [bountyId], references: [id])
-  bountyId      String @unique
-  submissionId  String @unique
+  id            String  @id @default(uuid())
+  bounty        Bounty  @relation(fields: [bountyId], references: [id])
+  bountyId      String  @unique
+  confirmed     Boolean @default(false)
+  submissionId  String  @unique
   // Team creator
-  member        Member @relation(fields: [memberAddress], references: [walletAddress])
+  member        Member  @relation(fields: [memberAddress], references: [walletAddress])
   memberAddress String
 
   approvedByFounder Boolean @default(false)
