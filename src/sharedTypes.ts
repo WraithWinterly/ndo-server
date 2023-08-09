@@ -1,7 +1,6 @@
-// Please do not import stuff into this file. It is shared between the client and server.
+// Please do not import stuff _not from Prisma_ into this file. It is shared between the client and server.
 // Only edit this file in the server repository, then copy into the client repository to avoid sync issues.
 
-import e from "express";
 import { BountyType, RoleType, TestCase } from "../prisma/generated";
 
 // For POST Requests
