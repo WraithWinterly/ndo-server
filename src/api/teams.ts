@@ -18,6 +18,9 @@ export function teamsSetup() {
           },
         },
       },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
     // console.log(currTeams);
     res.send(teams);
