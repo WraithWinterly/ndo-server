@@ -96,7 +96,30 @@ export function membersSetup() {
       res.send(members);
     }
   );
-
+  app.get("/get-leaderboard-members", async (req: Request, res: Response) => {
+    const members = await prisma.member.findMany({
+      orderBy: {
+        bountiesWon: "desc",
+      },
+      where: {
+        isFounder: false,
+      },
+      take: 10,
+    });
+    res.send(members);
+  });
+  app.get("/get-leaderboard-founders", async (req: Request, res: Response) => {
+    const members = await prisma.member.findMany({
+      orderBy: {
+        bountiesWon: "desc",
+      },
+      where: {
+        isFounder: true,
+      },
+      take: 10,
+    });
+    res.send(members);
+  });
   app.post("/create-profile", async (req: Request, res: Response) => {
     const m = req.body as CreateProfilePOSTData;
 
@@ -132,6 +155,7 @@ export function membersSetup() {
       bio: "",
       bountiesWon: 0,
       completedWelcome: true,
+      isFounder: false,
       level: 0,
       membersInvited: 0,
       playingRole: RoleType.Founder,
@@ -183,6 +207,16 @@ export function membersSetup() {
         playingRole: role,
       },
     });
+    if (role === RoleType.Founder) {
+      await prisma.member.update({
+        where: {
+          walletAddress,
+        },
+        data: {
+          isFounder: true,
+        },
+      });
+    }
     if (member) {
       res.json({
         message: "Success",

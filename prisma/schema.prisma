@@ -99,6 +99,7 @@ model Member {
   level            Int            @default(0)
   roles            RoleType[]
   playingRole      RoleType
+  isFounder        Boolean        @default(false)
   bountiesWon      Int
   teamsJoined      String[]
   membersInvited   Int
