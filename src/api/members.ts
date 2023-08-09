@@ -4,7 +4,11 @@ import { app } from "../";
 import { Request, Response } from "express";
 
 import prisma from "../prisma";
-import { ChangeRolePOSTData, CreateProfilePOSTData } from "../sharedTypes";
+import {
+  ChangeRolePOSTData,
+  ConfirmRewardPostData,
+  CreateProfilePOSTData,
+} from "../sharedTypes";
 
 export function membersSetup() {
   app.get(
@@ -186,6 +190,89 @@ export function membersSetup() {
     } else {
       res.status(400).json({ message: "Member not found" });
     }
+  });
+  app.get("/get-my-bounty-wins/:id", async (req: Request, res: Response) => {
+    const walletAddress = req.params.id;
+    if (!walletAddress) {
+      return res.status(400).json({
+        message: "walletAddress is missing",
+      });
+    }
+    const winners = await prisma.bountyWinner.findMany({
+      where: {
+        bounty: {
+          winningSubmission: {
+            team: {
+              members: {
+                some: {
+                  walletAddress,
+                },
+              },
+            },
+          },
+        },
+      },
+      include: {
+        submission: {
+          include: {
+            team: true,
+            bounty: true,
+          },
+        },
+      },
+    });
+    res.send(winners);
+  });
+  app.post("/confirm-reward", async (req: Request, res: Response) => {
+    const body = req.body as ConfirmRewardPostData;
+    const { submissionWinnerID, walletAddress } = body;
+    if (!submissionWinnerID) {
+      return res.status(400).json({ message: "submissionWinnerID is missing" });
+    }
+    if (!walletAddress) {
+      return res.status(400).json({ message: "walletAddress is missing" });
+    }
+    const member = await prisma.member.findUnique({
+      where: {
+        walletAddress,
+      },
+    });
+    if (!member) {
+      return res.status(400).json({ message: "Member not found" });
+    }
+    const bountyWinner = await prisma.bountyWinner.findUnique({
+      where: {
+        id: submissionWinnerID,
+      },
+      include: {
+        submission: {
+          include: {
+            team: true,
+          },
+        },
+      },
+    });
+    if (bountyWinner.submission.team.creatorAddress !== member.walletAddress) {
+      res.status(400).json({ message: "You are not the team's creator" });
+    }
+    const memberUpdate = await prisma.member.update({
+      where: {
+        walletAddress,
+      },
+      data: {
+        bountiesWon: {
+          increment: 1,
+        },
+      },
+    });
+    const deletion = await prisma.bountyWinner.delete({
+      where: {
+        id: submissionWinnerID,
+      },
+    });
+    res.status(200).json({
+      message: "Success",
+    });
   });
 }
 

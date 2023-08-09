@@ -76,7 +76,8 @@ model Submission {
   team      Team       @relation(fields: [teamId], references: [id])
   teamId    String
 
-  winningSubmission Bounty? @relation("WinningSubmission")
+  winningSubmission Bounty?       @relation("WinningSubmission")
+  BountyWinner      BountyWinner?
 }
 
 model TestCase {
@@ -111,13 +112,14 @@ model Member {
 }
 
 model BountyWinner {
-  id            String  @id @default(uuid())
-  bounty        Bounty  @relation(fields: [bountyId], references: [id])
-  bountyId      String  @unique
-  confirmed     Boolean @default(false)
-  submissionId  String  @unique
+  id            String      @id @default(uuid())
+  bounty        Bounty      @relation(fields: [bountyId], references: [id])
+  bountyId      String      @unique
+  confirmed     Boolean     @default(false)
+  submission    Submission? @relation(fields: [submissionId], references: [id])
+  submissionId  String      @unique
   // Team creator
-  member        Member  @relation(fields: [memberAddress], references: [walletAddress])
+  member        Member      @relation(fields: [memberAddress], references: [walletAddress])
   memberAddress String
 
   approvedByFounder Boolean @default(false)

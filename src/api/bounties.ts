@@ -730,7 +730,11 @@ export function bountiesSetup() {
               walletAddress: submission.team.creatorAddress,
             },
           },
-          submissionId: submissionID,
+          submission: {
+            connect: {
+              id: submission.id,
+            },
+          },
           bounty: {
             connect: {
               id: submission.bountyId,

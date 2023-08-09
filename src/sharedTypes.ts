@@ -93,6 +93,10 @@ export type ApproveDisapproveBountyWinnerPostData = {
   walletAddress: string;
   approve: boolean;
 };
+export type ConfirmRewardPostData = {
+  submissionWinnerID: string;
+  walletAddress: string;
+};
 export type ApproveTestCasePostData = {
   submissionID: string;
   walletAddress: string;
