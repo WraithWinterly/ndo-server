@@ -99,7 +99,6 @@ export function bountiesSetup() {
       },
     });
 
-    console.log(`success started bounty for team ${team.name}`);
     res.status(200).json({
       message: "Success",
     });
@@ -177,6 +176,21 @@ export function bountiesSetup() {
 
     if (!project) {
       return res.status(400).json({ message: "Project not found" });
+    }
+
+    // Ensure reward amount is valid
+    const bounties = await prisma.bounty.findMany({
+      where: {
+        projectId: body.bounty.projectID,
+      },
+    });
+    let reward = project.quotePrice;
+    const withoutMe = bounties?.filter((b) => b.id !== body.bounty?.id);
+    withoutMe?.forEach((bounty) => {
+      reward -= bounty.reward;
+    });
+    if (body.bounty.reward > reward) {
+      return res.status(400).json({ message: "Reward amount is too high" });
     }
 
     if (!body.bounty.id)
@@ -714,8 +728,7 @@ export function bountiesSetup() {
           },
         },
       });
-      console.log("here");
-      console.log(winner);
+
       if (winner.length > 0) {
         return res.status(400).json({
           message: "You have already selected the winning submission.",
