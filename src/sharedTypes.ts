@@ -1,7 +1,7 @@
 // Please do not import stuff _not from Prisma_ into this file. It is shared between the client and server.
 // Only edit this file in the server repository, then copy into the client repository to avoid sync issues.
 
-import { BountyType, RoleType, TestCase } from "../prisma/generated";
+import { Bounty, BountyType, RoleType, TestCase } from "../prisma/generated";
 
 // For POST Requests
 export type CreateProfilePOSTData = {
@@ -51,12 +51,13 @@ export type JoinTeamPOSTData = {
 };
 
 export type CreateBountyData = {
+  id: string | undefined;
   title: string;
   description: string;
-  about: string;
-  amount: number;
+  aboutProject: string;
+  reward: number;
   projectID: string;
-  startDate: Date;
+  postDate: Date;
   deadline: Date;
   types: BountyType[];
   headerSections: { [x: string]: string[] };
@@ -65,10 +66,6 @@ export type CreateBountyData = {
 export type CreateBountyPostData = {
   bounty: CreateBountyData;
   draft: boolean;
-  walletAddress: string;
-};
-export type SubmitDraftBountyPostData = {
-  bountyID: string;
   walletAddress: string;
 };
 export type SetApproveBountyPostData = {

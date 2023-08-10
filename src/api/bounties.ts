@@ -5,7 +5,6 @@ import {
   SetApproveBountyPostData,
   CreateBountyPostData,
   StartBountyPOSTData,
-  SubmitDraftBountyPostData,
   SetTestCasesPostData,
   SubmitDeliverablesPostData,
   ApproveTestCasePostData,
@@ -125,8 +124,8 @@ export function bountiesSetup() {
     const requiredFields = [
       "title",
       "description",
-      "about",
-      "amount",
+      "aboutProject",
+      "reward",
       "types",
       "projectID",
       "startDate",
@@ -158,7 +157,7 @@ export function bountiesSetup() {
 
     // Also check the validity of specific fields (e.g., startDate and deadline)
     // Validation for startDate and deadline
-    const startDate = new Date(body.bounty.startDate);
+    const startDate = new Date(body.bounty.postDate);
     const deadline = new Date(body.bounty.deadline);
 
     if (startDate > deadline) {
@@ -180,68 +179,67 @@ export function bountiesSetup() {
       return res.status(400).json({ message: "Project not found" });
     }
 
-    await prisma.project.update({
-      where: {
-        id: body.bounty.projectID,
-      },
-      data: {
-        bounties: {
-          create: {
-            title: body.bounty.title,
-            description: body.bounty.description,
-            aboutProject: body.bounty.about,
-            reward: body.bounty.amount,
-            deadline: body.bounty.deadline,
-            headerSections: body.bounty.headerSections,
-            postDate: new Date(),
-            types: body.bounty.types,
-            stage: body.draft ? "Draft" : "PendingApproval",
-            founder: {
-              connect: {
-                walletAddress: project.founder.walletAddress,
+    if (!body.bounty.id)
+      // Create bounty
+      await prisma.project.update({
+        where: {
+          id: body.bounty.projectID,
+        },
+        data: {
+          bounties: {
+            create: {
+              title: body.bounty.title,
+              description: body.bounty.description,
+              aboutProject: body.bounty.aboutProject,
+              reward: body.bounty.reward,
+              deadline: body.bounty.deadline,
+              headerSections: body.bounty.headerSections,
+              postDate: new Date(),
+              types: body.bounty.types,
+              stage: body.draft ? "Draft" : "PendingApproval",
+              founder: {
+                connect: {
+                  walletAddress: project.founder.walletAddress,
+                },
               },
             },
           },
         },
-      },
-    });
-
+      });
+    else {
+      await prisma.project.update({
+        where: {
+          id: body.bounty.projectID,
+        },
+        data: {
+          bounties: {
+            update: {
+              where: {
+                id: body.bounty.id,
+              },
+              data: {
+                title: body.bounty.title,
+                description: body.bounty.description,
+                aboutProject: body.bounty.aboutProject,
+                reward: body.bounty.reward,
+                deadline: body.bounty.deadline,
+                headerSections: body.bounty.headerSections,
+                postDate: new Date(),
+                types: body.bounty.types,
+                stage: body.draft ? "Draft" : "PendingApproval",
+                founder: {
+                  connect: {
+                    walletAddress: project.founder.walletAddress,
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+    }
     // Return success response
     return res.status(200).json({ message: "Bounty created successfully" });
-  });
-  app.post("/submit-bounty-draft", async (req: Request, res: Response) => {
-    const body = req.body as SubmitDraftBountyPostData;
-    const { bountyID, walletAddress } = body;
-    const member = await prisma.member.findUnique({
-      where: {
-        walletAddress,
-      },
-    });
-    if (!member) {
-      return res.status(400).json({ message: "Member not found" });
-    }
-    if (member.playingRole != "BountyDesigner") {
-      return res.status(400).json({ message: "You are not a Bounty Designer" });
-    }
-
-    const bounty = await prisma.bounty.findUnique({
-      where: {
-        id: bountyID,
-      },
-    });
-    if (!bounty) {
-      return res.status(400).json({ message: "Bounty not found" });
-    }
-
-    await prisma.bounty.update({
-      where: {
-        id: bountyID,
-      },
-      data: {
-        stage: "PendingApproval",
-      },
-    });
-    res.status(200).json({ message: "Success" });
   });
   app.post("/set-bounty-approval", async (req: Request, res: Response) => {
     const body = req.body as SetApproveBountyPostData;
