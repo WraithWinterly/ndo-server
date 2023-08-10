@@ -8,6 +8,7 @@ import {
   ChangeRolePOSTData,
   ConfirmRewardPostData,
   CreateProfilePOSTData,
+  UpdateRolesPostData,
 } from "../sharedTypes";
 
 export function membersSetup() {
@@ -93,7 +94,7 @@ export function membersSetup() {
         });
         return;
       }
-      res.send(members);
+      return res.send(members);
     }
   );
   app.get("/get-leaderboard-members", async (req: Request, res: Response) => {
@@ -207,6 +208,9 @@ export function membersSetup() {
         playingRole: role,
       },
     });
+    if (!member.roles.includes(role)) {
+      return res.status(400).json({ message: "Role is not allowed for you!" });
+    }
     if (role === RoleType.Founder) {
       await prisma.member.update({
         where: {
@@ -218,11 +222,11 @@ export function membersSetup() {
       });
     }
     if (member) {
-      res.json({
+      return res.json({
         message: "Success",
       });
     } else {
-      res.status(400).json({ message: "Member not found" });
+      return res.status(400).json({ message: "Member not found" });
     }
   });
   app.get("/get-my-bounty-wins/:id", async (req: Request, res: Response) => {
@@ -306,6 +310,25 @@ export function membersSetup() {
       },
     });
     res.status(200).json({
+      message: "Success",
+    });
+  });
+  app.post("/update-my-roles", async (req: Request, res: Response) => {
+    const body = req.body as UpdateRolesPostData;
+
+    if (!body.walletAddress) {
+      return res.status(400).json({
+        message: "walletAddress is missing",
+      });
+    }
+    // Read the blockchain data for which roles are allowed for a user after minting their NFT
+
+    const member = await prisma.member.findUnique({
+      where: {
+        walletAddress: body.walletAddress,
+      },
+    });
+    return res.status(200).json({
       message: "Success",
     });
   });

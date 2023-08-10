@@ -80,6 +80,9 @@ export type SubmitDeliverablesPostData = {
   videoDemo: string;
   repo: string;
 };
+export type UpdateRolesPostData = {
+  walletAddress: string;
+};
 export type SelectWinningSubmissionPostData = {
   submissionID: string;
   walletAddress: string;
