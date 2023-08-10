@@ -185,6 +185,9 @@ export function bountiesSetup() {
       },
     });
     let reward = project.quotePrice;
+    if (reward <= 0) {
+      return res.status(400).json({ message: "Invalid reward amount" });
+    }
     const withoutMe = bounties?.filter((b) => b.id !== body.bounty?.id);
     withoutMe?.forEach((bounty) => {
       reward -= bounty.reward;
