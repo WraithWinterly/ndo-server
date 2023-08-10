@@ -7,11 +7,15 @@ import {
 import prisma from "./prisma";
 
 export default async function seedDatabasePrisma() {
+  await prisma.bountyWinner.deleteMany();
+  await prisma.teamInvite.deleteMany();
+  await prisma.testCase.deleteMany();
+  await prisma.submission.deleteMany();
   await prisma.bounty.deleteMany();
   await prisma.team.deleteMany();
   await prisma.project.deleteMany();
   await prisma.member.deleteMany();
-
+  /*
   // Prisma create for bounty1
   const bounty1 = await prisma.bounty.create({
     data: {
@@ -113,6 +117,7 @@ export default async function seedDatabasePrisma() {
       stage: BountyStage.Active,
     },
   });
+  */
 
   // Prisma create for member1
   const member1 = await prisma.member.create({
@@ -277,6 +282,7 @@ export default async function seedDatabasePrisma() {
     },
   });
 
+  /*
   // Prisma create for project1
   const project1 = await prisma.project.create({
     data: {
@@ -355,4 +361,5 @@ export default async function seedDatabasePrisma() {
       },
     },
   });
+  */
 }

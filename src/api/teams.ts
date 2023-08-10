@@ -89,6 +89,11 @@ export function teamsSetup() {
               walletAddress: data.creatorAddress,
             },
           },
+          members: {
+            connect: {
+              walletAddress: data.creatorAddress,
+            },
+          },
         },
       });
 
@@ -119,7 +124,7 @@ export function teamsSetup() {
   });
   app.post("/invite-to-team", async (req: Request, res: Response) => {
     const data = req.body as InviteToTeamPOSTData;
-    console.log(data);
+
     if (!data)
       return res.send(400).json({
         message: "No data provided",

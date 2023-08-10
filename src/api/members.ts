@@ -255,6 +255,7 @@ export function membersSetup() {
         },
       },
     });
+
     res.send(winners);
   });
   app.post("/confirm-reward", async (req: Request, res: Response) => {

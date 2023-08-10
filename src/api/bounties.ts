@@ -856,7 +856,7 @@ export function bountiesSetup() {
           });
           await prisma.bounty.update({
             where: {
-              id: data.id,
+              id: data.bountyId,
             },
             data: {
               winningSubmission: {
