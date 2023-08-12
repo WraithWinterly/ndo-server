@@ -367,7 +367,7 @@ export async function InviteToTeam(options: {
     return "Already invited";
   }
 
-  await prisma.teamInvite.create({
+  const invite = await prisma.teamInvite.create({
     data: {
       fromAddress: inviterAddress,
       fromName: inviterName,
@@ -380,4 +380,16 @@ export async function InviteToTeam(options: {
       },
     },
   });
+  if (invite) {
+    await prisma.member.update({
+      where: {
+        walletAddress: userAddress,
+      },
+      data: {
+        membersInvited: {
+          increment: 1,
+        },
+      },
+    });
+  }
 }
