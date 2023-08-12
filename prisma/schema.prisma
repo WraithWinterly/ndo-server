@@ -103,7 +103,7 @@ model Member {
   playingRole      RoleType
   isFounder        Boolean        @default(false)
   bountiesWon      Int
-  teamsJoined      String[]
+  teamsJoined      Int
   membersInvited   Int
   completedWelcome Boolean
   teamInvites      TeamInvite[]

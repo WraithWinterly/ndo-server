@@ -130,6 +130,7 @@ export default async function seedDatabasePrisma() {
       bountiesWon: 0,
       completedWelcome: true,
       membersInvited: 0,
+      teamsJoined: 0,
       playingRole: RoleType.BountyHunter, // Assuming there's a role with ID "0" for "Founder"
       roles: [
         RoleType.BountyHunter,
@@ -138,8 +139,8 @@ export default async function seedDatabasePrisma() {
         RoleType.BountyManager,
         RoleType.BountyValidator,
       ],
-      // walletAddress: "FC2E5GnpBUs74FtkBaf7Q36JWhbAtSspyVU2mndst7pd",
-      walletAddress: "nope",
+      walletAddress: "FC2E5GnpBUs74FtkBaf7Q36JWhbAtSspyVU2mndst7pd",
+      // walletAddress: "nope",
     },
   });
 
@@ -154,6 +155,7 @@ export default async function seedDatabasePrisma() {
       level: 22,
       bountiesWon: 24,
       membersInvited: 12,
+      teamsJoined: 0,
       completedWelcome: true,
       walletAddress: "7A5E0B7D-B202-494F-BB66-174FBE55FDD3",
       roles: [RoleType.BountyHunter], // Assuming there are roles with IDs "Bounty Hunter" and "Bounty Validator"
@@ -172,6 +174,7 @@ export default async function seedDatabasePrisma() {
       level: 45,
       bountiesWon: 21,
       membersInvited: 92,
+      teamsJoined: 0,
       completedWelcome: true,
       walletAddress: "AB65B816-66A5-4322-A950-453F62C9E86E",
       roles: [RoleType.BountyDesigner, RoleType.BountyHunter], // Assuming there are roles with IDs "Bounty Hunter" (connected twice)
@@ -190,6 +193,7 @@ export default async function seedDatabasePrisma() {
       level: 59,
       bountiesWon: 20,
       membersInvited: 21,
+      teamsJoined: 0,
       completedWelcome: true,
       walletAddress: "F16849F2-8078-4CA0-8A90-2FE84A36E3F1",
       roles: [RoleType.BountyManager, RoleType.BountyHunter], // Assuming there are roles with IDs "Bounty Hunter" and "Bounty Designer"
@@ -208,6 +212,7 @@ export default async function seedDatabasePrisma() {
       level: 39,
       bountiesWon: 20,
       membersInvited: 21,
+      teamsJoined: 0,
       completedWelcome: true,
       walletAddress: "000",
       roles: [RoleType.BountyHunter], // Assuming there are roles with IDs "Bounty Hunter" (connected twice)

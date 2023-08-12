@@ -161,7 +161,7 @@ export function membersSetup() {
       membersInvited: 0,
       playingRole: RoleType.BountyHunter,
       roles: [RoleType.BountyHunter],
-      teamsJoined: [],
+      teamsJoined: 0,
       walletAddress: m.walletAddress,
     };
 

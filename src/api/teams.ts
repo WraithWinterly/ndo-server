@@ -39,9 +39,11 @@ export function teamsSetup() {
       },
     });
 
-    if (!team) return res.send(404).json({ message: "Team not found" });
+    if (!team) {
+      return res.send(404).json({ message: "Team not found" });
+    }
 
-    res.send(team);
+    return res.send(team);
   });
   app.post("/create-team", async (req: Request, res: Response) => {
     const data = req.body as CreateTeamPOSTData;
@@ -209,10 +211,21 @@ async function teamInvite(
 ) {
   const data = req.body as JoinTeamPOSTData;
   // Ensure correct body data
-  if (!data) return res.sendStatus(400);
-  if (!data.fromAddress) return res.sendStatus(400);
-  if (!data.toTeamID) return res.sendStatus(400);
+  if (!data) return res.status(400).json({ message: "No data provided" });
+  if (!data.fromAddress)
+    return res.status(400).json({ message: "No fromAddress provided" });
+  if (!data.toTeamID)
+    return res.status(400).json({ message: "No toTeamID provided" });
 
+  const member = await prisma.member.findUnique({
+    where: {
+      walletAddress: data.fromAddress,
+    },
+    include: {
+      teams: true,
+    },
+  });
+  if (!member) return res.status(400).json({ message: "User not found" });
   try {
     const team = await prisma.team.findUnique({
       where: {
@@ -244,6 +257,15 @@ async function teamInvite(
           members: {
             connect: { walletAddress: data.fromAddress },
           },
+        },
+      });
+      // Update teamsJoined stat
+      await prisma.member.update({
+        where: {
+          walletAddress: data.fromAddress,
+        },
+        data: {
+          teamsJoined: Number(member.teams.length),
         },
       });
     }
