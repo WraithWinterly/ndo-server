@@ -139,8 +139,8 @@ export default async function seedDatabasePrisma() {
         RoleType.BountyManager,
         RoleType.BountyValidator,
       ],
-      walletAddress: "FC2E5GnpBUs74FtkBaf7Q36JWhbAtSspyVU2mndst7pd",
-      // walletAddress: "nope",
+      // walletAddress: "FC2E5GnpBUs74FtkBaf7Q36JWhbAtSspyVU2mndst7pd",
+      walletAddress: "nope",
     },
   });
 

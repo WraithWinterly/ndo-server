@@ -1,7 +1,7 @@
 // Please do not import stuff _not from Prisma_ into this file. It is shared between the client and server.
 // Only edit this file in the server repository, then copy into the client repository to avoid sync issues.
 
-import { Bounty, BountyType, RoleType, TestCase } from "../prisma/generated";
+import { BountyType, RoleType, TestCase } from "../prisma/generated";
 
 // For POST Requests
 export type CreateProfilePOSTData = {
@@ -9,11 +9,9 @@ export type CreateProfilePOSTData = {
   firstName: string;
   lastName: string;
   email: string;
-  walletAddress: string;
 };
 export type ChangeRolePOSTData = {
   role: RoleType;
-  walletAddress: string;
 };
 export type BountyMgrSetQuotePricePOSTData = {
   quotePrice: number;
@@ -37,16 +35,13 @@ export type CreateProjectPOSTData = {
   description: string;
   email: string;
   phone: string;
-  walletAddress: string;
 };
 
 export type InviteToTeamPOSTData = {
-  fromAddress: string;
   toAddress: string;
   toTeam: string;
 };
 export type JoinTeamPOSTData = {
-  fromAddress: string;
   toTeamID: string;
 };
 
@@ -66,45 +61,34 @@ export type CreateBountyData = {
 export type CreateBountyPostData = {
   bounty: CreateBountyData;
   draft: boolean;
-  walletAddress: string;
 };
 export type SetApproveBountyPostData = {
   bountyID: string;
-  walletAddress: string;
   approve: boolean;
 };
 export type SubmitDeliverablesPostData = {
   bountyID: string;
   teamID: string;
-  walletAddress: string;
   videoDemo: string;
   repo: string;
 };
-export type UpdateRolesPostData = {
-  walletAddress: string;
-};
 export type SelectWinningSubmissionPostData = {
   submissionID: string;
-  walletAddress: string;
 };
 export type ApproveDisapproveBountyWinnerPostData = {
   submissionID: string;
-  walletAddress: string;
   approve: boolean;
 };
 export type ConfirmRewardPostData = {
   submissionWinnerID: string;
-  walletAddress: string;
 };
 export type ApproveTestCasePostData = {
   submissionID: string;
-  walletAddress: string;
   testCases: TestCase[];
 };
 
 export type SetTestCasesPostData = {
   bountyID: string;
-  walletAddress: string;
   testCases: string[];
 };
 
@@ -116,7 +100,6 @@ export type StartBountyPOSTData = {
 
 export type FounderConfirmPayPostData = {
   projectID: string;
-  walletAddress: string;
 };
 
 // END For POST Requests
