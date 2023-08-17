@@ -6,13 +6,14 @@ import {
 } from "../sharedTypes";
 import { app } from "../";
 
-import { Request, Response } from "express";
+import { Response } from "express";
 import prisma from "../prisma";
 import { ProjectStage } from "../../prisma/generated";
 import {
   ProtectedRequest,
   authenticateToken,
   authenticateMember,
+  validateFields,
 } from "../utils";
 
 export function projectsSetup() {
@@ -71,17 +72,21 @@ export function projectsSetup() {
     "/create-proposal",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const createProjectData: CreateProjectPOSTData = req.body;
+      const { title, description, email, phone } =
+        validateFields<CreateProjectPOSTData>(
+          [
+            { name: "title", min: 3, max: 20 },
+            { name: "description", min: 10 },
+            { name: "email", min: 5, max: 20 },
+            { name: "phone", min: 10, max: 16 },
+          ],
+          req.body,
+          res
+        );
       const member = await authenticateMember(req, res);
       function canProceedCreateProject() {
-        if (!createProjectData) return false;
-        if (createProjectData.title.trim().length < 3) return false;
-        if (createProjectData.description.trim().length < 3) return false;
-        if (createProjectData.email.trim().length < 3) return false;
         let emailReg = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w\w+)+$/;
-        if (!emailReg.test(createProjectData.email)) return false;
-        if (createProjectData.phone.trim().length < 10) return false;
-
+        if (!emailReg.test(email)) return false;
         return true;
       }
       if (!canProceedCreateProject())
@@ -93,11 +98,11 @@ export function projectsSetup() {
       });
       await prisma.project.create({
         data: {
-          title: createProjectData.title,
-          description: createProjectData.description,
+          title,
+          description,
           stage: ProjectStage.PendingBountyMgrQuote,
-          email: createProjectData.email,
-          phone: createProjectData.phone,
+          email,
+          phone,
           quotePrice: 0,
           founder: {
             connect: {
@@ -115,16 +120,21 @@ export function projectsSetup() {
   app.post(
     "/bountymgr-set-quote-price",
     async (req: ProtectedRequest, res: Response) => {
-      const body = req.body as BountyMgrSetQuotePricePOSTData;
-      if (!body.projectID || !body.quotePrice) {
+      const { projectID, quotePrice } =
+        validateFields<BountyMgrSetQuotePricePOSTData>(
+          [{ name: "projectID" }, { name: "quotePrice", type: "number" }],
+          req.body,
+          res
+        );
+      if (!projectID || !quotePrice) {
         return res.sendStatus(400);
       }
       await prisma.project.update({
         where: {
-          id: body.projectID,
+          id: projectID,
         },
         data: {
-          quotePrice: body.quotePrice,
+          quotePrice,
           stage: ProjectStage.PendingFounderPay,
         },
       });
@@ -138,13 +148,15 @@ export function projectsSetup() {
     "/bountymgr-decline",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const body = req.body as BountyMgrDeclineProjectPOSTData;
-      if (!body) {
-        return res.sendStatus(400);
-      }
+      const { projectID } = validateFields<BountyMgrDeclineProjectPOSTData>(
+        [{ name: "projectID" }],
+        req.body,
+        res
+      );
+
       const proj = await prisma.project.update({
         where: {
-          id: body.projectID,
+          id: projectID,
         },
         data: {
           stage: "Declined",
@@ -161,15 +173,17 @@ export function projectsSetup() {
     "/founder-confirm-pay",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const body = req.body as FounderConfirmPayPostData;
-      if (!body) {
-        return res.sendStatus(400);
-      }
+      const { projectID } = validateFields<FounderConfirmPayPostData>(
+        [{ name: "projectID" }],
+        req.body,
+        res
+      );
+
       const member = await authenticateMember(req, res);
 
       const project = await prisma.project.findUnique({
         where: {
-          id: body.projectID,
+          id: projectID,
         },
       });
       if (!project) {
@@ -181,7 +195,7 @@ export function projectsSetup() {
       if (project)
         await prisma.project.update({
           where: {
-            id: body.projectID,
+            id: projectID,
           },
           data: {
             stage: ProjectStage.PendingBountyDesign,

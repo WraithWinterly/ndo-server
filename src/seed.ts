@@ -1,9 +1,4 @@
-import {
-  BountyStage,
-  BountyType,
-  ProjectStage,
-  RoleType,
-} from "../prisma/generated";
+import { RoleType } from "../prisma/generated";
 import prisma from "./prisma";
 
 export default async function seedDatabasePrisma() {

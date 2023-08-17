@@ -4,13 +4,14 @@ import {
   InviteToTeamPOSTData,
   JoinTeamPOSTData,
 } from "../sharedTypes";
-import { type Request, type Response } from "express";
+import { type Response } from "express";
 import { InviteToTeam } from "./members";
 import prisma from "../prisma";
 import {
   ProtectedRequest,
   authenticateMember,
   authenticateToken,
+  validateFields,
 } from "../utils";
 
 export function teamsSetup() {
@@ -62,65 +63,60 @@ export function teamsSetup() {
     "/create-team",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const data = req.body as CreateTeamPOSTData;
-
+      const {
+        name,
+        description,
+        creatorAddress,
+        link,
+        memberAddressesToInvite,
+      } = validateFields<CreateTeamPOSTData>(
+        [
+          { name: "name" },
+          { name: "description" },
+          { name: "creatorAddress" },
+          { name: "link" },
+          { name: "memberAddressesToInvite" },
+        ],
+        req.body,
+        res
+      );
       try {
-        if (!data.name || data.name.trim().length < 3)
-          return res.send(400).json({
-            message: "Name must be present and at least 3 characters long",
-          });
-
-        if (data.description.trim().length < 3)
-          return res.send(400).json({
-            message:
-              "Description must be present and at least 3 characters long",
-          });
-        if (data.link.trim().length < 3)
-          return res.send(400).json({
-            message: "Link must be present and at least 3 characters long",
-          });
-
         const linkRegex = /^(ftp|http|https):\/\/[^ "]+$/;
 
-        if (!linkRegex.test(data.link))
+        if (!linkRegex.test(link))
           return res.send(400).json({
             message: "Invalid link sent to server",
           });
 
-        if (!data.creatorAddress)
-          return res.send(400).json({
-            message: "No creator address provided",
-          });
-
         const user = await prisma.member.findUnique({
           where: {
-            walletAddress: data.creatorAddress,
+            walletAddress: creatorAddress,
           },
         });
 
         const createdTeam = await prisma.team.create({
           data: {
-            name: data.name,
-            description: data.description,
-            link: data.link,
+            name,
+            description,
+            link: link,
             creator: {
               connect: {
-                walletAddress: data.creatorAddress,
+                walletAddress: creatorAddress,
               },
             },
             members: {
               connect: {
-                walletAddress: data.creatorAddress,
+                walletAddress: creatorAddress,
               },
             },
           },
         });
 
         // Send notification to the users
-        data.memberAddressesToInvite.forEach((address) => {
+        memberAddressesToInvite.forEach((address) => {
           try {
             InviteToTeam({
-              fromAddress: data.creatorAddress,
+              fromAddress: creatorAddress,
               fromAddressName: user.firstName,
               teamID: createdTeam.id,
               teamName: createdTeam.name,
@@ -146,21 +142,12 @@ export function teamsSetup() {
     "/invite-to-team",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const data = req.body as InviteToTeamPOSTData;
+      const { toAddress, toTeam } = validateFields<InviteToTeamPOSTData>(
+        [{ name: "toAddress" }, { name: "toTeam" }],
+        req.body,
+        res
+      );
       const member = await authenticateMember(req, res);
-      if (!data)
-        return res.send(400).json({
-          message: "No data provided",
-        });
-
-      if (!data.toAddress)
-        return res.send(400).json({
-          message: "No to address provided",
-        });
-      if (!data.toTeam)
-        return res.send(400).json({
-          message: "No to team provided",
-        });
 
       try {
         const fromUser = await prisma.member.findUnique({
@@ -170,16 +157,16 @@ export function teamsSetup() {
         });
         const team = await prisma.team.findUnique({
           where: {
-            id: data.toTeam,
+            id: toTeam,
           },
         });
 
         const error = await InviteToTeam({
           fromAddress: member.walletAddress,
           fromAddressName: fromUser.firstName,
-          teamID: data.toTeam,
+          teamID: toTeam,
           teamName: team.name,
-          userAddress: data.toAddress,
+          userAddress: toAddress,
         });
         if (error?.length > 0) {
           console.error(error);
@@ -235,14 +222,13 @@ async function teamInvite(
   res: Response,
   type: "accept" | "reject"
 ) {
-  const data = req.body as JoinTeamPOSTData;
+  const { toTeamID } = validateFields<JoinTeamPOSTData>(
+    [{ name: "toTeamID" }],
+    req.body,
+    res
+  );
   const authMember = await authenticateMember(req, res);
   // Ensure correct body data
-  if (!data) return res.status(400).json({ message: "No data provided" });
-
-  if (!data.toTeamID)
-    return res.status(400).json({ message: "No toTeamID provided" });
-
   const member = await prisma.member.findUnique({
     where: {
       walletAddress: authMember.walletAddress,
@@ -255,7 +241,7 @@ async function teamInvite(
   try {
     const team = await prisma.team.findUnique({
       where: {
-        id: data.toTeamID,
+        id: toTeamID,
       },
       include: {
         members: true,
@@ -266,7 +252,7 @@ async function teamInvite(
       where: {
         fromAddress: authMember.walletAddress,
         AND: {
-          toTeamId: data.toTeamID,
+          toTeamId: toTeamID,
         },
       },
     });

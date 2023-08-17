@@ -1,6 +1,6 @@
 import { app } from "..";
 
-import { type Request, type Response } from "express";
+import { type Response } from "express";
 import {
   SetApproveBountyPostData,
   CreateBountyPostData,
@@ -23,6 +23,7 @@ import {
   ProtectedRequest,
   authenticateToken,
   authenticateMember as authenticateMember,
+  validateFields,
 } from "../utils";
 import { auth } from "firebase-admin";
 
@@ -275,9 +276,12 @@ export function bountiesSetup() {
     "/set-bounty-approval",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const body = req.body as SetApproveBountyPostData;
+      const { approve, bountyID } = validateFields<SetApproveBountyPostData>(
+        [{ name: "approve", type: "boolean" }, { name: "bountyID" }],
+        req.body,
+        res
+      );
       const member = await authenticateMember(req, res);
-      const { bountyID, approve } = body;
 
       if (!bountyID) {
         return res.status(400).json({ message: "bountyID is missing" });
@@ -383,7 +387,11 @@ export function bountiesSetup() {
     "/add-test-cases",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const { bountyID, testCases } = req.body as SetTestCasesPostData;
+      const { bountyID, testCases } = validateFields<SetTestCasesPostData>(
+        [{ name: "bountyID" }, { name: "testCases", type: "array" }],
+        req.body,
+        res
+      );
       const member = await authenticateMember(req, res);
 
       if (!bountyID) {
@@ -494,8 +502,17 @@ export function bountiesSetup() {
     "/submit-deliverables",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const body = req.body as SubmitDeliverablesPostData;
-      const { bountyID, teamID, videoDemo, repo } = body;
+      const { bountyID, teamID, videoDemo, repo } =
+        validateFields<SubmitDeliverablesPostData>(
+          [
+            { name: "bountyID" },
+            { name: "teamID" },
+            { name: "videoDemo" },
+            { name: "repo" },
+          ],
+          req.body,
+          res
+        );
       const member = await authenticateMember(req, res);
 
       if (!bountyID) {
@@ -618,9 +635,13 @@ export function bountiesSetup() {
     "/approve-test-cases",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const body = req.body as ApproveTestCasePostData;
+      const { submissionID, testCases } =
+        validateFields<ApproveTestCasePostData>(
+          [{ name: "submissionID" }, { name: "testCases", type: "array" }],
+          req.body,
+          res
+        );
 
-      const { submissionID, testCases } = body;
       const member = await authenticateMember(req, res);
       if (!submissionID) {
         return res.status(400).json({ message: "submissionID is missing" });
@@ -672,8 +693,12 @@ export function bountiesSetup() {
     "/validator-select-winning-submission",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const body = req.body as SelectWinningSubmissionPostData;
-      const { submissionID } = body;
+      const { submissionID } = validateFields<SelectWinningSubmissionPostData>(
+        [{ name: "submissionID" }],
+        req.body,
+        res
+      );
+
       const member = await authenticateMember(req, res);
       if (!submissionID) {
         return res.status(400).json({ message: "submissionID is missing" });
@@ -764,8 +789,12 @@ export function bountiesSetup() {
     "/approve-disapprove-bounty-winner",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const body = req.body as ApproveDisapproveBountyWinnerPostData;
-      const { submissionID, approve } = body;
+      const { approve, submissionID } =
+        validateFields<ApproveDisapproveBountyWinnerPostData>(
+          [{ name: "approve", type: "boolean" }, { name: "submissionID" }],
+          req.body,
+          res
+        );
       const member = await authenticateMember(req, res);
       if (!submissionID) {
         return res.status(400).json({ message: "submissionID is missing" });

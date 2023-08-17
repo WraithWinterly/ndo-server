@@ -15,7 +15,6 @@ import jwt from "jsonwebtoken";
 import admin from "firebase-admin";
 import serviceAccount from "../service-key.json";
 
-import env from "dotenv";
 import { generateAccessToken } from "./utils";
 
 let refreshTokens = [];

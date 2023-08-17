@@ -1,7 +1,7 @@
 import { Member, RoleType, Team } from "../../prisma/generated";
 import { app } from "../";
 
-import { Request, Response } from "express";
+import { Response } from "express";
 
 import prisma from "../prisma";
 import {
@@ -13,6 +13,8 @@ import {
   ProtectedRequest,
   authenticateToken,
   authenticateMember,
+  Field as Fields,
+  validateFields,
 } from "../utils";
 
 export function membersSetup() {
@@ -143,37 +145,30 @@ export function membersSetup() {
     "/create-profile",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const data = req.body as CreateProfilePOSTData;
+      const { email, firstName, lastName, username } =
+        validateFields<CreateProfilePOSTData>(
+          [
+            { name: "email", type: "string", min: 3, max: 255 },
+            { name: "firstName", type: "string", min: 2, max: 24 },
+            { name: "lastName", type: "string", min: 2, max: 24 },
+            { name: "username", type: "string", min: 2, max: 24 },
+          ],
+          req.body,
+          res
+        );
 
-      const localErrors: string[] = [];
-      if (!data.username || data.username.trim().length < 3) {
-        localErrors.push("Username must be at least 3 characters long");
-      }
-      if (!data.firstName || data.firstName.trim().length < 2) {
-        localErrors.push("First Name must be at least 2 characters long");
-      }
-      if (!data.lastName || data.lastName.trim().length < 2) {
-        localErrors.push("Last Name must be at least 2 characters long");
-      }
       const emailReg = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w\w+)+$/;
-      if (
-        !data.email ||
-        data.email.trim().length < 2 ||
-        !emailReg.test(data.email.trim())
-      ) {
-        localErrors.push("Email is required and must be valid");
-      }
-
-      if (localErrors.length > 0) {
-        res.status(400).send(localErrors);
-        return;
+      if (!emailReg.test(email.trim())) {
+        return res
+          .status(400)
+          .json({ message: "Email is required and must be valid" });
       }
 
       const newMember: Member = {
-        username: data.username,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
+        username,
+        firstName,
+        lastName,
+        email,
         bio: "",
         bountiesWon: 0,
         completedWelcome: true,
@@ -211,18 +206,18 @@ export function membersSetup() {
     "/change-role",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const body = req.body as ChangeRolePOSTData;
-      const { role } = body;
-      const member = await authenticateMember(req, res);
-      if (!role) {
-        res.status(400).json({ message: "Role is required" });
-        return;
-      }
-
+      const { role } = validateFields<ChangeRolePOSTData>(
+        [{ name: "role" }],
+        req.body,
+        res
+      );
       if (!Object.values(RoleType).includes(role)) {
         res.status(400).json({ message: "Invalid role" });
         return;
       }
+
+      const member = await authenticateMember(req, res);
+
       const updatedMember = await prisma.member.update({
         where: {
           walletAddress: member.walletAddress,
@@ -296,15 +291,13 @@ export function membersSetup() {
     "/confirm-reward",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const body = req.body as ConfirmRewardPostData;
-      const { submissionWinnerID } = body;
-      const member = await authenticateMember(req, res);
+      const { submissionWinnerID } = validateFields<ConfirmRewardPostData>(
+        [{ name: "submissionWinnerID" }],
+        req.body,
+        res
+      );
 
-      if (!submissionWinnerID) {
-        return res
-          .status(400)
-          .json({ message: "submissionWinnerID is missing" });
-      }
+      const member = await authenticateMember(req, res);
 
       const bountyWinner = await prisma.bountyWinner.findUnique({
         where: {
