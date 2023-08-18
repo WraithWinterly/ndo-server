@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { Member } from "../prisma/generated";
-import prisma from "./prisma";
+import { Collections, db, dbMembers } from "./";
+import { Member } from "./sharedTypes";
 
 export interface ProtectedRequest extends Request {
   walletAddress: string;
@@ -52,22 +52,12 @@ export async function authenticateMember(
     res.status(401).json({ message: "Not authenticated." });
     return;
   }
-  //   const doc = await users.doc(req.walletAddress).get();
-  //   if (!doc.exists) {
-  //     res.status(401).json({ message: "User not found" });
-  //     return;
-  //   }
-  //   return doc.data() as Member;
-  const member = await prisma.member.findUnique({
-    where: {
-      walletAddress: req.walletAddress,
-    },
-  });
-  if (!member) {
+  const doc = (await dbMembers.doc(req.walletAddress).get()).data();
+  if (!doc.exists) {
     res.status(401).json({ message: "User not found" });
     return;
   }
-  return member;
+  return doc as Member;
 }
 
 export interface Field {
@@ -146,3 +136,91 @@ export function validateFields<T>(
 
   return sanitizedBody as T;
 }
+
+export async function includeMany(options: {
+  data: Object[];
+  propertyName: string;
+  idPropertyName: string;
+  dbCollection: Collections;
+}): Promise<Object[]> {
+  const { data, propertyName, idPropertyName, dbCollection } = options;
+  const ids = new Set<string>();
+
+  data.forEach((item: any) => {
+    if (item[idPropertyName]) {
+      ids.add(item[idPropertyName]);
+    }
+  });
+
+  const resultMap: Record<string, any> = {};
+
+  const batch = db.batch();
+
+  const idArray = Array.from(ids);
+  const batchSize = 10; // Adjust the batch size as needed
+
+  for (let i = 0; i < idArray.length; i += batchSize) {
+    const batchIds = idArray.slice(i, i + batchSize);
+
+    const batchSnapshots = await Promise.all(
+      batchIds.map((id) => db.collection(dbCollection).doc(id).get())
+    );
+
+    batchSnapshots.forEach((snapshot) => {
+      resultMap[snapshot.id] = snapshot.data();
+    });
+  }
+
+  // data.forEach((item: any) => {
+  //   if (item[idPropertyName]) {
+  //     item[propertyName] = resultMap[item[idPropertyName]];
+
+  //     const docRef = db.collection(dbCollection).doc(item[idPropertyName]);
+  //     batch.update(docRef, { [propertyName]: resultMap[item[idPropertyName]] });
+  //   }
+  // });
+
+  // Commit the batch writes
+  await batch.commit();
+
+  return data;
+}
+
+export async function includeSingle<T>(options: {
+  data: Object;
+  propertyName: string;
+  idPropertyName: string;
+  dbCollection: Collections;
+}): Promise<Object> {
+  const { data, propertyName, idPropertyName, dbCollection } = options;
+
+  //@ts-ignore
+  const id = data[idPropertyName];
+
+  if (!id) {
+    throw new Error(
+      `The provided object does not have an ID (${idPropertyName}).`
+    );
+  }
+
+  const snapshot = await db.collection(dbCollection).doc(id).get();
+  const result = snapshot.data();
+
+  if (!result) {
+    //@ts-ignore
+    data[propertyName] = undefined;
+  } else {
+    //@ts-ignore
+    data[propertyName] = result;
+  }
+
+  return data;
+}
+
+// Usage example:
+// const dataWithProjects = await includeMany(
+//   data,
+//   "project",
+//   "projectID",
+//   dbProjects
+// );

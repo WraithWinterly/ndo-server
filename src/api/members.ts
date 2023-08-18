@@ -1,13 +1,13 @@
-import { Member, RoleType, Team } from "../../prisma/generated";
-import { app } from "../";
+import { app, dbMembers, dbTeamInvites } from "../";
 
 import { Response } from "express";
 
-import prisma from "../prisma";
 import {
   ChangeRolePOSTData,
   ConfirmRewardPostData,
   CreateProfilePOSTData,
+  Member,
+  RoleType,
 } from "../sharedTypes";
 import {
   ProtectedRequest,
@@ -27,11 +27,8 @@ export function membersSetup() {
           message: "No ID provided",
         });
       }
-      const member = await prisma.member.findUnique({
-        where: {
-          walletAddress: req.params.id,
-        },
-      });
+      const member = await dbMembers.doc(req.params.id).get();
+
       if (!member) {
         res.status(404).json({
           message: "Member not found",
@@ -42,29 +39,28 @@ export function membersSetup() {
     }
   );
   app.get(
-    "/get-my-profile/:id",
+    "/get-my-profile",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      if (!req.params.id) {
-        return res.status(400).json({
-          message: "No ID provided",
-        });
-      }
-      const member = await prisma.member.findUnique({
-        where: {
-          walletAddress: req.params.id,
-        },
-        include: {
-          teamInvites: true,
-        },
-      });
+      const member = (await dbMembers.doc(req.walletAddress).get()).data();
+      // const memberteamInvites = await teamInvites
+      //   .doc(member.teamInviteIds)
+      //   .get();
+      // const member = await prisma.member.findUnique({
+      //   where: {
+      //     walletAddress: req.params.id,
+      //   },
+      //   include: {
+      //     teamInvites: true,
+      //   },
+      // });
       if (!member) {
         res.status(404).json({
           message: "Member not found",
         });
         return;
       }
-      res.send(member);
+      res.send({ ...member, teamInvites: [] });
     }
   );
   app.post(
@@ -92,53 +88,55 @@ export function membersSetup() {
 
       // console.log("addresses: ", addresses);
 
-      const members = await prisma.member.findMany({
-        where: {
-          walletAddress: {
-            in: addresses,
-          },
-        },
-      });
+      // const members = await prisma.member.findMany({
+      //   where: {
+      //     walletAddress: {
+      //       in: addresses,
+      //     },
+      //   },
+      // });
 
-      if (!members) {
+      if (!dbMembers) {
         res.status(404).json({
           message: "Member not found",
         });
         return;
       }
-      return res.send(members);
+      return res.send(dbMembers);
     }
   );
   app.get(
     "/get-leaderboard-members",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const members = await prisma.member.findMany({
-        orderBy: {
-          bountiesWon: "desc",
-        },
-        where: {
-          isFounder: false,
-        },
-        take: 10,
-      });
-      res.send(members);
+      // const members = await prisma.member.findMany({
+      //   orderBy: {
+      //     bountiesWon: "desc",
+      //   },
+      //   where: {
+      //     isFounder: false,
+      //   },
+      //   take: 10,
+      // });
+      // res.send(members);
+      return res.status(200).json({ message: "NOT IMPLEMENTED" });
     }
   );
   app.get(
     "/get-leaderboard-founders",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const members = await prisma.member.findMany({
-        orderBy: {
-          bountiesWon: "desc",
-        },
-        where: {
-          isFounder: true,
-        },
-        take: 10,
-      });
-      res.send(members);
+      // const members = await prisma.member.findMany({
+      //   orderBy: {
+      //     bountiesWon: "desc",
+      //   },
+      //   where: {
+      //     isFounder: true,
+      //   },
+      //   take: 10,
+      // });
+      // res.send(members);
+      return res.status(200).json({ message: "NOT IMPLEMENTED" });
     }
   );
   app.post(
@@ -171,7 +169,6 @@ export function membersSetup() {
         email,
         bio: "",
         bountiesWon: 0,
-        completedWelcome: true,
         isFounder: false,
         level: 0,
         membersInvited: 0,
@@ -179,21 +176,25 @@ export function membersSetup() {
         roles: [RoleType.BountyHunter],
         teamsJoined: 0,
         walletAddress: req.walletAddress,
+        teamInviteIds: [],
+        createdTeamIds: [],
+        teamsIds: [],
+        bountyWinnerIDs: [],
       };
 
-      const existingUser = await prisma.member.findUnique({
-        where: {
-          walletAddress: newMember.walletAddress,
-        },
-      });
-      if (!!existingUser) {
-        res.status(400).json({ message: "Member already exists" });
-        return;
-      }
+      // const existingUser = await prisma.member.findUnique({
+      //   where: {
+      //     walletAddress: newMember.walletAddress,
+      //   },
+      // });
+      // if (!!existingUser) {
+      //   res.status(400).json({ message: "Member already exists" });
+      //   return;
+      // }
 
-      await prisma.member.create({
-        data: newMember,
-      });
+      // await prisma.member.create({
+      //   data: newMember,
+      // });
 
       console.log("Member created");
       res.json({
@@ -211,6 +212,7 @@ export function membersSetup() {
         req.body,
         res
       );
+      //@ts-ignore
       if (!Object.values(RoleType).includes(role)) {
         res.status(400).json({ message: "Invalid role" });
         return;
@@ -218,135 +220,140 @@ export function membersSetup() {
 
       const member = await authenticateMember(req, res);
 
-      const updatedMember = await prisma.member.update({
-        where: {
-          walletAddress: member.walletAddress,
-        },
-        data: {
-          playingRole: role,
-        },
-      });
-      if (!member.roles.includes(role)) {
-        return res
-          .status(400)
-          .json({ message: "Role is not allowed for you!" });
-      }
-      if (role === RoleType.Founder) {
-        await prisma.member.update({
-          where: {
-            walletAddress: member.walletAddress,
-          },
-          data: {
-            isFounder: true,
-          },
-        });
-      }
-      if (updatedMember) {
-        return res.json({
-          message: "Success",
-        });
-      } else {
-        return res.status(400).json({ message: "Member not found" });
-      }
+      // const updatedMember = await prisma.member.update({
+      //   where: {
+      //     walletAddress: member.walletAddress,
+      //   },
+      //   data: {
+      //     playingRole: role,
+      //   },
+      // });
+      // if (!member.roles.includes(role)) {
+      //   return res
+      //     .status(400)
+      //     .json({ message: "Role is not allowed for you!" });
+      // }
+      // if (role === RoleType.Founder) {
+      //   await prisma.member.update({
+      //     where: {
+      //       walletAddress: member.walletAddress,
+      //     },
+      //     data: {
+      //       isFounder: true,
+      //     },
+      //   });
+      // }
+      // if (updatedMember) {
+      //   return res.json({
+      //     message: "Success",
+      //   });
+      // } else {
+      //   return res.status(400).json({ message: "Member not found" });
+      // }
+      return res.status(200).json({ message: "NOT IMPLEMENTED" });
     }
   );
   app.get(
-    "/get-my-bounty-wins/:id",
+    "/get-my-bounty-wins",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const walletAddress = req.params.id;
-      if (!walletAddress) {
-        return res.status(400).json({
-          message: "walletAddress is missing",
-        });
-      }
-      const winners = await prisma.bountyWinner.findMany({
-        where: {
-          bounty: {
-            winningSubmission: {
-              team: {
-                members: {
-                  some: {
-                    walletAddress,
-                  },
-                },
-              },
-            },
-          },
-        },
-        include: {
-          submission: {
-            include: {
-              team: true,
-              bounty: true,
-            },
-          },
-        },
-      });
+      // const walletAddress = req.params.id;
+      // if (!walletAddress) {
+      //   return res.status(400).json({
+      //     message: "walletAddress is missing",
+      //   });
+      // }
+      // const winners = await prisma.bountyWinner.findMany({
+      //   where: {
+      //     bounty: {
+      //       winningSubmission: {
+      //         team: {
+      //           members: {
+      //             some: {
+      //               walletAddress,
+      //             },
+      //           },
+      //         },
+      //       },
+      //     },
+      //   },
+      //   include: {
+      //     submission: {
+      //       include: {
+      //         team: true,
+      //         bounty: true,
+      //       },
+      //     },
+      //   },
+      // });
 
-      res.send(winners);
+      // res.send(winners);
+      return res.status(200).json({ message: "NOT IMPLEMENTED" });
     }
   );
   app.post(
     "/confirm-reward",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const { submissionWinnerID } = validateFields<ConfirmRewardPostData>(
-        [{ name: "submissionWinnerID" }],
-        req.body,
-        res
-      );
+      // const { submissionWinnerID } = validateFields<ConfirmRewardPostData>(
+      //   [{ name: "submissionWinnerID" }],
+      //   req.body,
+      //   res
+      // );
 
-      const member = await authenticateMember(req, res);
+      // const member = await authenticateMember(req, res);
 
-      const bountyWinner = await prisma.bountyWinner.findUnique({
-        where: {
-          id: submissionWinnerID,
-        },
-        include: {
-          submission: {
-            include: {
-              team: true,
-            },
-          },
-        },
-      });
-      if (
-        bountyWinner.submission.team.creatorAddress !== member.walletAddress
-      ) {
-        res.status(400).json({ message: "You are not the team's creator" });
-      }
-      const memberUpdate = await prisma.member.update({
-        where: {
-          walletAddress: member.walletAddress,
-        },
-        data: {
-          bountiesWon: {
-            increment: 1,
-          },
-        },
-      });
-      const deletion = await prisma.bountyWinner.delete({
-        where: {
-          id: submissionWinnerID,
-        },
-      });
-      res.status(200).json({
-        message: "Success",
-      });
+      // const bountyWinner = await prisma.bountyWinner.findUnique({
+      //   where: {
+      //     id: submissionWinnerID,
+      //   },
+      //   include: {
+      //     submission: {
+      //       include: {
+      //         team: true,
+      //       },
+      //     },
+      //   },
+      // });
+      // if (
+      //   bountyWinner.submission.team.creatorAddress !== member.walletAddress
+      // ) {
+      //   res.status(400).json({ message: "You are not the team's creator" });
+      // }
+      // const memberUpdate = await prisma.member.update({
+      //   where: {
+      //     walletAddress: member.walletAddress,
+      //   },
+      //   data: {
+      //     bountiesWon: {
+      //       increment: 1,
+      //     },
+      //   },
+      // });
+      // const deletion = await prisma.bountyWinner.delete({
+      //   where: {
+      //     id: submissionWinnerID,
+      //   },
+      // });
+      // res.status(200).json({
+      //   message: "Success",
+      // });
+      return res.status(200).json({ message: "NOT IMPLEMENTED" });
     }
   );
   app.post(
     "/update-my-roles",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const member = authenticateMember(req, res);
+      //   const member = authenticateMember(req, res);
 
-      // Read the blockchain data for which roles are allowed for a user after minting their NFT
+      //   // Read the blockchain data for which roles are allowed for a user after minting their NFT
 
-      return res.status(200).json({
-        message: "Success",
-      });
+      //   return res.status(200).json({
+      //     message: "Success",
+      //   });
+      // }
+      return res.status(200).json({ message: "NOT IMPLEMENTED" });
     }
   );
 }
@@ -358,55 +365,52 @@ export async function InviteToTeam(options: {
   fromAddress: string;
   userAddress: string;
 }) {
-  const {
-    teamID,
-    fromAddressName: inviterName,
-    fromAddress: inviterAddress,
-    userAddress,
-  } = options;
-
-  const team = await prisma.team.findUnique({
-    where: {
-      id: teamID,
-    },
-  });
-
-  // Check if user is already invited
-  const existingInvite = await prisma.teamInvite.findFirst({
-    where: {
-      memberAddress: userAddress,
-      AND: {
-        toTeamId: teamID,
-      },
-    },
-  });
-  if (!!existingInvite) {
-    return "Already invited";
-  }
-
-  const invite = await prisma.teamInvite.create({
-    data: {
-      fromAddress: inviterAddress,
-      fromName: inviterName,
-      toTeamId: teamID,
-      toTeamName: team.name,
-      member: {
-        connect: {
-          walletAddress: userAddress,
-        },
-      },
-    },
-  });
-  if (invite) {
-    await prisma.member.update({
-      where: {
-        walletAddress: userAddress,
-      },
-      data: {
-        membersInvited: {
-          increment: 1,
-        },
-      },
-    });
-  }
+  // const {
+  //   teamID,
+  //   fromAddressName: inviterName,
+  //   fromAddress: inviterAddress,
+  //   userAddress,
+  // } = options;
+  // const team = await prisma.team.findUnique({
+  //   where: {
+  //     id: teamID,
+  //   },
+  // });
+  // // Check if user is already invited
+  // const existingInvite = await prisma.teamInvite.findFirst({
+  //   where: {
+  //     memberAddress: userAddress,
+  //     AND: {
+  //       toTeamId: teamID,
+  //     },
+  //   },
+  // });
+  // if (!!existingInvite) {
+  //   return "Already invited";
+  // }
+  // const invite = await prisma.teamInvite.create({
+  //   data: {
+  //     fromAddress: inviterAddress,
+  //     fromName: inviterName,
+  //     toTeamId: teamID,
+  //     toTeamName: team.name,
+  //     member: {
+  //       connect: {
+  //         walletAddress: userAddress,
+  //       },
+  //     },
+  //   },
+  // });
+  // if (invite) {
+  //   await prisma.member.update({
+  //     where: {
+  //       walletAddress: userAddress,
+  //     },
+  //     data: {
+  //       membersInvited: {
+  //         increment: 1,
+  //       },
+  //     },
+  //   });
+  // }
 }

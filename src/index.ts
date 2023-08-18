@@ -6,7 +6,7 @@ import { bountiesSetup } from "./api/bounties";
 import { membersSetup } from "./api/members";
 import { teamsSetup } from "./api/teams";
 import { projectsSetup } from "./api/projects";
-import seedDatabasePrisma from "./seed";
+import seedDatabaseFirestore from "./seed";
 
 import bs58 from "bs58";
 import nacl from "tweetnacl";
@@ -33,7 +33,21 @@ admin.initializeApp({
 });
 export const db = admin.firestore();
 
-export const users = db.collection("ndo-users");
+export enum Collections {
+  Members = "ndo-members",
+  Bounties = "ndo-bounties",
+  Teams = "ndo-teams",
+  Projects = "ndo-projects",
+  TeamInvites = "ndo-team-invites",
+  BountyWinners = "ndo-bounty-winners",
+}
+
+export const dbMembers = db.collection(Collections.Members);
+export const dbBounties = db.collection(Collections.Bounties);
+export const dbTeams = db.collection(Collections.Teams);
+export const dbProjects = db.collection(Collections.Projects);
+export const dbTeamInvites = db.collection(Collections.TeamInvites);
+export const dbBountyWinners = db.collection(Collections.BountyWinners);
 
 export const app: Express = express();
 const port = process.env.PORT;
@@ -113,7 +127,7 @@ app.post("/authorize", (req: Request, res: Response) => {
 
 app.get("/seed", async (req: Request, res: Response) => {
   console.log("[i] Starting seed");
-  await seedDatabasePrisma();
+  await seedDatabaseFirestore();
   console.log("[i] Seeding complete");
   res.json({ message: "Seeding Complete" });
 });
