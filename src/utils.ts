@@ -53,7 +53,7 @@ export async function authenticateMember(
     return;
   }
   const doc = (await dbMembers.doc(req.walletAddress).get()).data();
-  if (!doc.exists) {
+  if (!doc) {
     res.status(401).json({ message: "User not found" });
     return;
   }
@@ -140,67 +140,54 @@ export function validateFields<T>(
 export async function includeMany(options: {
   data: Object[];
   propertyName: string;
-  idPropertyName: string;
+  propertyNameID: string;
   dbCollection: Collections;
 }): Promise<Object[]> {
-  const { data, propertyName, idPropertyName, dbCollection } = options;
-  const ids = new Set<string>();
+  const { data, propertyName, propertyNameID, dbCollection } = options;
 
-  data.forEach((item: any) => {
-    if (item[idPropertyName]) {
-      ids.add(item[idPropertyName]);
+  const dataAny = structuredClone(data) as any;
+
+  for (const item of dataAny) {
+    if (!item[propertyNameID]) {
+      throw new Error(
+        `The provided object does not have a ${propertyNameID} property.`
+      );
     }
-  });
-
-  const resultMap: Record<string, any> = {};
-
-  const batch = db.batch();
-
-  const idArray = Array.from(ids);
-  const batchSize = 10; // Adjust the batch size as needed
-
-  for (let i = 0; i < idArray.length; i += batchSize) {
-    const batchIds = idArray.slice(i, i + batchSize);
-
-    const batchSnapshots = await Promise.all(
-      batchIds.map((id) => db.collection(dbCollection).doc(id).get())
-    );
-
-    batchSnapshots.forEach((snapshot) => {
-      resultMap[snapshot.id] = snapshot.data();
-    });
+    const snapshot = await db
+      .collection(dbCollection)
+      .doc(item[propertyNameID])
+      .get();
+    const result = snapshot.data();
+    if (result) {
+      item[propertyName] = result;
+    } else {
+      item[propertyName] = undefined;
+    }
   }
 
-  // data.forEach((item: any) => {
-  //   if (item[idPropertyName]) {
-  //     item[propertyName] = resultMap[item[idPropertyName]];
-
-  //     const docRef = db.collection(dbCollection).doc(item[idPropertyName]);
-  //     batch.update(docRef, { [propertyName]: resultMap[item[idPropertyName]] });
-  //   }
-  // });
-
-  // Commit the batch writes
-  await batch.commit();
-
-  return data;
+  return dataAny;
 }
 
 export async function includeSingle<T>(options: {
   data: Object;
   propertyName: string;
-  idPropertyName: string;
+  propertyNameID: string;
   dbCollection: Collections;
 }): Promise<Object> {
-  const { data, propertyName, idPropertyName, dbCollection } = options;
-
+  const { data, propertyName, propertyNameID, dbCollection } = options;
+  const dataAny = structuredClone(data) as any;
   //@ts-ignore
-  const id = data[idPropertyName];
+  const id = dataAny[propertyNameID];
 
-  if (!id) {
+  if (id == null) {
     throw new Error(
-      `The provided object does not have an ID (${idPropertyName}).`
+      `The provided object does not have an ID (${propertyNameID}).`
     );
+  }
+
+  if (id === "") {
+    dataAny[propertyName] = {};
+    return Promise.resolve(dataAny);
   }
 
   const snapshot = await db.collection(dbCollection).doc(id).get();
@@ -215,6 +202,44 @@ export async function includeSingle<T>(options: {
   }
 
   return data;
+}
+export async function includeSingleArray(options: {
+  data: Object;
+  propertyName: string;
+  propertyNameID: string;
+  dbCollection: Collections;
+}): Promise<Object> {
+  const { data, propertyName, propertyNameID, dbCollection } = options;
+  const dataAny = structuredClone(data) as any;
+  //@ts-ignore
+  const ids = dataAny[propertyNameID] as string[];
+
+  if (!ids) {
+    throw new Error(
+      `The provided object does not have an ID (${propertyNameID}).`
+    );
+  }
+
+  if (!Array.isArray(ids)) {
+    throw new Error(`(${propertyNameID}) Not an array.`);
+  }
+
+  const results: Array<Object> = [];
+
+  await Promise.all(
+    ids.map(async (id) => {
+      const snapshot = await db.collection(dbCollection).doc(id).get();
+      const result = snapshot.data();
+
+      if (!!result) {
+        results.push(result);
+      }
+    })
+  );
+
+  dataAny[propertyName] = results;
+
+  return dataAny;
 }
 
 // Usage example:

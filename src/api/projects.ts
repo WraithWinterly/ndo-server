@@ -3,8 +3,9 @@ import {
   BountyMgrSetQuotePricePOSTData,
   BountyMgrDeclineProjectPOSTData,
   FounderConfirmPayPostData,
+  Project,
 } from "../sharedTypes";
-import { app } from "../";
+import { Collections, app, dbBounties, dbProjects } from "../";
 
 import { Response } from "express";
 
@@ -13,67 +14,75 @@ import {
   authenticateToken,
   authenticateMember,
   validateFields,
+  includeSingle,
+  includeMany,
 } from "../utils";
 
 export function projectsSetup() {
   app.get(
     "/get-projects",
     authenticateToken,
-    // async (req: ProtectedRequest, res: Response) => {
-    //   const data = (await prisma.project.findMany())?.reverse();
-
-    //   return res.send(data);
-    // }
     async (req: ProtectedRequest, res: Response) => {
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      const data = (await dbProjects.get()).docs
+        .map((doc) => doc.data())
+        ?.reverse();
+
+      return res.send(data);
     }
   );
   app.get(
     "/get-project-by-id/:id",
     authenticateToken,
-    // async (req: ProtectedRequest, res: Response) => {
-    //   if (!req.params.id) {
-    //     return res.send(400).json({
-    //       message: "No ID provided",
-    //     });
-    //   }
-
-    //   const data = await prisma.project.findUnique({
-    //     where: {
-    //       id: req.params.id,
-    //     },
-    //     include: {
-    //       founder: true,
-    //     },
-    //   });
-
-    //   return res.send(data);
-    // }
     async (req: ProtectedRequest, res: Response) => {
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      if (!req.params.id) {
+        return res.send(400).json({
+          message: "No ID provided",
+        });
+      }
+
+      let data = (await dbProjects.doc(req.params.id).get()).data();
+
+      data = await includeSingle({
+        data,
+        propertyName: "founder",
+        propertyNameID: "founderWalletAddress",
+        dbCollection: Collections.Members,
+      });
+      console.log(data);
+      return res.send(data);
     }
   );
   app.get(
     "/get-bounties-for-project/:id",
-    // async (req: ProtectedRequest, res: Response) => {
-    //   if (!req.params.id) {
-    //     return res.send(400).json({
-    //       message: "No ID provided",
-    //     });
-    //   }
-    //   const bounties = await prisma.bounty.findMany({
-    //     where: {
-    //       projectId: req.params.id,
-    //     },
-    //     include: {
-    //       project: true,
-    //     },
-    //   });
-
-    //   res.send(bounties);
-    // }
     async (req: ProtectedRequest, res: Response) => {
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      if (!req.params.id) {
+        return res.send(400).json({
+          message: "No ID provided",
+        });
+      }
+      // const bounties = await prisma.bounty.findMany({
+      //   where: {
+      //     projectId: req.params.id,
+      //   },
+      //   include: {
+      //     project: true,
+      //   },
+      // });
+      const project = (
+        await dbProjects.doc(req.params.id).get()
+      ).data() as Project;
+
+      const bountyPromises = project.bountyIDs.map(async (bountyID: string) => {
+        const bountySnapshot = await dbBounties.doc(bountyID).get();
+        const bounty = bountySnapshot.data();
+        if (bounty) {
+          bounty.project = project;
+          return bounty;
+        }
+      });
+
+      const bounties = await Promise.all(bountyPromises);
+      return res.send(bounties);
     }
   );
   app.post(

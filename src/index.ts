@@ -40,6 +40,7 @@ export enum Collections {
   Projects = "ndo-projects",
   TeamInvites = "ndo-team-invites",
   BountyWinners = "ndo-bounty-winners",
+  Submissions = "ndo-submissions",
 }
 
 export const dbMembers = db.collection(Collections.Members);

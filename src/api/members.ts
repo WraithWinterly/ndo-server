@@ -1,4 +1,10 @@
-import { app, dbMembers, dbTeamInvites } from "../";
+import {
+  Collections,
+  app,
+  dbBountyWinners,
+  dbMembers,
+  dbTeamInvites,
+} from "../";
 
 import { Response } from "express";
 
@@ -15,6 +21,7 @@ import {
   authenticateMember,
   Field as Fields,
   validateFields,
+  includeSingle,
 } from "../utils";
 
 export function membersSetup() {
@@ -220,43 +227,66 @@ export function membersSetup() {
 
       const member = await authenticateMember(req, res);
 
-      // const updatedMember = await prisma.member.update({
-      //   where: {
-      //     walletAddress: member.walletAddress,
-      //   },
-      //   data: {
-      //     playingRole: role,
-      //   },
-      // });
-      // if (!member.roles.includes(role)) {
-      //   return res
-      //     .status(400)
-      //     .json({ message: "Role is not allowed for you!" });
-      // }
-      // if (role === RoleType.Founder) {
-      //   await prisma.member.update({
-      //     where: {
-      //       walletAddress: member.walletAddress,
-      //     },
-      //     data: {
-      //       isFounder: true,
-      //     },
-      //   });
-      // }
-      // if (updatedMember) {
-      //   return res.json({
-      //     message: "Success",
-      //   });
-      // } else {
-      //   return res.status(400).json({ message: "Member not found" });
-      // }
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      if (!member.roles.includes(role)) {
+        return res
+          .status(400)
+          .json({ message: "Role is not allowed for you!" });
+      }
+      const updatedMember = await dbMembers.doc(member.walletAddress).update({
+        playingRole: role,
+      });
+
+      if (role === RoleType.Founder) {
+        await dbMembers.doc(member.walletAddress).update({
+          isFounder: true,
+        });
+      }
+
+      if (updatedMember) {
+        return res.json({
+          message: "Success",
+        });
+      } else {
+        return res.status(400).json({ message: "Member not found" });
+      }
     }
   );
   app.get(
     "/get-my-bounty-wins",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
+      const user = await authenticateMember(req, res);
+      console.log(user);
+
+      let winners = [];
+      if (!!user.bountyWinnerIDs) {
+        for (const item of user.bountyWinnerIDs) {
+          let data = (await dbBountyWinners.doc(item).get()).data();
+          data = includeSingle({
+            data,
+            dbCollection: Collections.Submissions,
+            propertyName: "submission",
+            propertyNameID: "submissionID",
+          });
+          if (data.submission) {
+            data.submission = includeSingle({
+              data: data.submission,
+              dbCollection: Collections.Bounties,
+              propertyName: "bounty",
+              propertyNameID: "bountyID",
+            });
+            data.submission = includeSingle({
+              data: data.submission,
+              dbCollection: Collections.Teams,
+              propertyName: "team",
+              propertyNameID: "teamID",
+            });
+          }
+
+          winners.push(data);
+        }
+      }
+
       // const walletAddress = req.params.id;
       // if (!walletAddress) {
       //   return res.status(400).json({
@@ -287,8 +317,8 @@ export function membersSetup() {
       //   },
       // });
 
-      // res.send(winners);
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      res.send(winners);
+      // return res.status(200).json({ message: "NOT IMPLEMENTED" });
     }
   );
   app.post(
@@ -345,15 +375,13 @@ export function membersSetup() {
     "/update-my-roles",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      //   const member = authenticateMember(req, res);
+      const member = authenticateMember(req, res);
 
       //   // Read the blockchain data for which roles are allowed for a user after minting their NFT
 
-      //   return res.status(200).json({
-      //     message: "Success",
-      //   });
-      // }
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      return res.status(200).json({
+        message: "Success",
+      });
     }
   );
 }

@@ -75,12 +75,13 @@ export const SAMPLE_BOUNTIES: Bounty[] = [
     approvedByFounder: true,
     approvedByManager: true,
     approvedByValidator: true,
-    bountyWinnerIDs: [],
+    bountyWinnerID: [],
     submissionIDs: [],
     testCases: [],
     testCaseIDs: [],
     participantsTeamIDs: [],
     stage: BountyStage.Active,
+    winningSubmissionID: "",
 
     aboutProject:
       "Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur, rerum.",

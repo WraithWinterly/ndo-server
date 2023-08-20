@@ -21,6 +21,7 @@ import {
   validateFields,
   includeMany,
   includeSingle,
+  includeSingleArray,
 } from "../utils";
 import { auth } from "firebase-admin";
 
@@ -34,15 +35,15 @@ export function bountiesSetup() {
       //     project: true,
       //   },
       // });
-      const data = (await dbBounties.get()).docs.map((doc) => doc.data());
-      const withProj = await includeMany({
+      let data = (await dbBounties.get()).docs.map((doc) => doc.data());
+      data = await includeMany({
         data,
         propertyName: "project",
-        idPropertyName: "projectID",
+        propertyNameID: "projectID",
         dbCollection: Collections.Projects,
       });
-
-      return res.send(withProj);
+      // console.log(withProj);
+      return res.send(data);
     }
   );
   app.get(
@@ -56,19 +57,42 @@ export function bountiesSetup() {
 
       // Find the bounty from the database
 
-      const bounty = (await dbBounties.doc(req.params.id).get()).data();
-      const withProj = await includeSingle({
+      let bounty = (await dbBounties.doc(req.params.id).get()).data();
+      bounty = await includeSingle({
         data: bounty,
         propertyName: "project",
-        idPropertyName: "projectID",
+        propertyNameID: "projectID",
         dbCollection: Collections.Projects,
       });
-      const withFounder = await includeSingle({
-        data: withProj,
+      bounty = await includeSingle({
+        data: bounty,
         propertyName: "founder",
-        idPropertyName: "founderAddress",
+        propertyNameID: "founderAddress",
         dbCollection: Collections.Members,
       });
+
+      bounty = await includeSingleArray({
+        data: bounty,
+        propertyName: "submissions",
+        propertyNameID: "submissionIDs",
+        dbCollection: Collections.Submissions,
+      });
+      console.log(bounty);
+      bounty = await includeSingle({
+        data: bounty,
+        propertyName: "winningSubmission",
+        propertyNameID: "winningSubmissionID",
+        dbCollection: Collections.Bounties,
+      });
+      bounty.submissions = await includeMany({
+        data: bounty.submissions,
+        propertyName: "team",
+        propertyNameID: "teamID",
+        dbCollection: Collections.Teams,
+      });
+
+      console.log(bounty);
+      return res.send(bounty);
 
       // const bounty = await prisma.bounty.findUnique({
       //   where: {
@@ -96,8 +120,6 @@ export function bountiesSetup() {
       //     },
       //   },
       // });
-
-      return res.send(bounty);
     }
   );
   app.post(

@@ -184,14 +184,14 @@ export interface Bounty {
   submissionIDs: string[];
   aboutProject?: string;
   headerSections?: any;
-  winningSubmissionID?: string;
+  winningSubmissionID: string;
   approvedByFounder: boolean;
   approvedByManager: boolean;
   approvedByValidator: boolean;
   reward: number;
-  founderAddress?: string;
-  projectID?: string;
-  bountyWinnerIDs: string[];
+  founderAddress: string;
+  projectID: string;
+  bountyWinnerID: string[];
 }
 
 export interface Submission {
@@ -202,7 +202,7 @@ export interface Submission {
   testCaseIds: string[];
   bountyID: string;
   teamID: string;
-  winningSubmissionID?: Bounty;
+  winningSubmissionID?: string;
   bountyWinnerID?: string;
 }
 

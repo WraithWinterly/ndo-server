@@ -1,4 +1,4 @@
-import { app } from "..";
+import { Collections, app, dbTeams } from "..";
 import {
   CreateTeamPOSTData,
   InviteToTeamPOSTData,
@@ -11,6 +11,8 @@ import {
   ProtectedRequest,
   authenticateMember,
   authenticateToken,
+  includeSingle,
+  includeSingleArray,
   validateFields,
 } from "../utils";
 
@@ -18,51 +20,56 @@ export function teamsSetup() {
   app.get(
     "/get-teams",
     authenticateToken,
-    // async (req: ProtectedRequest, res: Response) => {
-    //   const teams = await prisma.team.findMany({
-    //     include: {
-    //       members: {
-    //         select: {
-    //           walletAddress: true,
-    //         },
-    //       },
-    //     },
-    //     orderBy: {
-    //       createdAt: "desc",
-    //     },
-    //   });
-    //   // console.log(currTeams);
-    //   res.send(teams);
-    // }
     async (req: ProtectedRequest, res: Response) => {
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      // const teams = await prisma.team.findMany({
+      //   include: {
+      //     members: {
+      //       select: {
+      //         walletAddress: true,
+      //       },
+      //     },
+      //   },
+      //   orderBy: {
+      //     createdAt: "desc",
+      //   },
+      // });
+      const teams = (await dbTeams.get()).docs
+        .map((doc) => doc.data())
+        .reverse();
+      // console.log(currTeams);
+      res.send(teams);
     }
   );
   app.get(
     "/get-team-by-id/:id",
     authenticateToken,
-    // async (req: ProtectedRequest, res: Response) => {
-    //   if (!req.params.id) {
-    //     return res.status(400).json({ message: "No ID" });
-    //   }
-
-    //   const team = await prisma.team.findUnique({
-    //     where: {
-    //       id: req.params.id,
-    //     },
-    //     include: {
-    //       members: true,
-    //     },
-    //   });
-
-    //   if (!team) {
-    //     return res.send(404).json({ message: "Team not found" });
-    //   }
-
-    //   return res.send(team);
-    // }
     async (req: ProtectedRequest, res: Response) => {
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      if (!req.params.id) {
+        return res.status(400).json({ message: "No ID" });
+      }
+
+      // const team = await prisma.team.findUnique({
+      //   where: {
+      //     id: req.params.id,
+      //   },
+      //   include: {
+      //     members: true,
+      //   },
+      // });
+
+      let team = (await dbTeams.doc(req.params.id).get()).data();
+      team = await includeSingleArray({
+        data: team,
+        propertyName: "members",
+        propertyNameID: "memberIDs",
+        dbCollection: Collections.Members,
+      });
+
+      if (!team) {
+        return res.send(404).json({ message: "Team not found" });
+      }
+
+      return res.send(team);
     }
   );
   app.post(
