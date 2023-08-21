@@ -100,7 +100,6 @@ export type CreateTeamPOSTData = {
   name: string;
   description: string;
   link: string;
-  memberAddressesToInvite: string[];
 };
 
 export type InviteToTeamPOSTData = {

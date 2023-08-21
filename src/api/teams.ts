@@ -3,10 +3,11 @@ import {
   CreateTeamPOSTData,
   InviteToTeamPOSTData,
   JoinTeamPOSTData,
+  Team,
 } from "../sharedTypes";
 import { type Response } from "express";
 import { InviteToTeam } from "./members";
-
+import { v4 as uuid } from "uuid";
 import {
   ProtectedRequest,
   authenticateMember,
@@ -21,18 +22,6 @@ export function teamsSetup() {
     "/get-teams",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      // const teams = await prisma.team.findMany({
-      //   include: {
-      //     members: {
-      //       select: {
-      //         walletAddress: true,
-      //       },
-      //     },
-      //   },
-      //   orderBy: {
-      //     createdAt: "desc",
-      //   },
-      // });
       const teams = (await dbTeams.get()).docs
         .map((doc) => doc.data())
         .reverse();
@@ -47,15 +36,6 @@ export function teamsSetup() {
       if (!req.params.id) {
         return res.status(400).json({ message: "No ID" });
       }
-
-      // const team = await prisma.team.findUnique({
-      //   where: {
-      //     id: req.params.id,
-      //   },
-      //   include: {
-      //     members: true,
-      //   },
-      // });
 
       let team = (await dbTeams.doc(req.params.id).get()).data();
       team = await includeSingleArray({
@@ -75,83 +55,40 @@ export function teamsSetup() {
   app.post(
     "/create-team",
     authenticateToken,
-    // async (req: ProtectedRequest, res: Response) => {
-    //   const {
-    //     name,
-    //     description,
-    //     creatorAddress,
-    //     link,
-    //     memberAddressesToInvite,
-    //   } = validateFields<CreateTeamPOSTData>(
-    //     [
-    //       { name: "name" },
-    //       { name: "description" },
-    //       { name: "creatorAddress" },
-    //       { name: "link" },
-    //       { name: "memberAddressesToInvite" },
-    //     ],
-    //     req.body,
-    //     res
-    //   );
-    //   try {
-    //     const linkRegex = /^(ftp|http|https):\/\/[^ "]+$/;
-
-    //     if (!linkRegex.test(link))
-    //       return res.send(400).json({
-    //         message: "Invalid link sent to server",
-    //       });
-
-    //     const user = await prisma.member.findUnique({
-    //       where: {
-    //         walletAddress: creatorAddress,
-    //       },
-    //     });
-
-    //     const createdTeam = await prisma.team.create({
-    //       data: {
-    //         name,
-    //         description,
-    //         link: link,
-    //         creator: {
-    //           connect: {
-    //             walletAddress: creatorAddress,
-    //           },
-    //         },
-    //         members: {
-    //           connect: {
-    //             walletAddress: creatorAddress,
-    //           },
-    //         },
-    //       },
-    //     });
-
-    //     // Send notification to the users
-    //     memberAddressesToInvite.forEach((address) => {
-    //       try {
-    //         InviteToTeam({
-    //           fromAddress: creatorAddress,
-    //           fromAddressName: user.firstName,
-    //           teamID: createdTeam.id,
-    //           teamName: createdTeam.name,
-    //           userAddress: address,
-    //         });
-    //       } catch (e) {
-    //         console.error(e);
-    //         return res.sendStatus(400).json({
-    //           message: "Failed to send invites to members",
-    //         });
-    //       }
-    //     });
-    //     res.json({
-    //       message: "Success",
-    //     });
-    //   } catch (e) {
-    //     console.log(e);
-    //     res.send(400).json(e);
-    //   }
-    // }
     async (req: ProtectedRequest, res: Response) => {
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      const member = await authenticateMember(req, res);
+      const { name, description, link } = validateFields<CreateTeamPOSTData>(
+        [{ name: "name" }, { name: "description" }, { name: "link" }],
+        req.body,
+        res
+      );
+      try {
+        const linkRegex = /^(ftp|http|https):\/\/[^ "]+$/;
+
+        if (!linkRegex.test(link))
+          return res.send(400).json({
+            message: "Invalid link sent to server",
+          });
+
+        const createdTeam: Team = {
+          id: uuid(),
+          name,
+          description,
+          link: link,
+          creatorAddress: member.walletAddress,
+          createdAt: new Date(),
+          memberIDs: [member.walletAddress],
+          submissionIDs: [],
+        };
+        dbTeams.doc(createdTeam.id).set(createdTeam);
+
+        res.json({
+          message: "Success",
+        });
+      } catch (e) {
+        console.log(e);
+        res.send(400).json(e);
+      }
     }
   );
   app.post(
