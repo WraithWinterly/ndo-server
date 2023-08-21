@@ -1,9 +1,11 @@
 import {
   Collections,
   app,
+  db,
   dbBountyWinners,
   dbMembers,
   dbTeamInvites,
+  dbTeams,
 } from "../";
 
 import { Response } from "express";
@@ -14,6 +16,7 @@ import {
   CreateProfilePOSTData,
   Member,
   RoleType,
+  TeamInvite,
 } from "../sharedTypes";
 import {
   ProtectedRequest,
@@ -21,9 +24,9 @@ import {
   authenticateMember,
   Field as Fields,
   validateFields,
-  includeSingle,
+  include,
 } from "../utils";
-
+import { v4 as uuid } from "uuid";
 export function membersSetup() {
   app.get(
     "/get-member-by-wallet-address/:id",
@@ -34,7 +37,7 @@ export function membersSetup() {
           message: "No ID provided",
         });
       }
-      const member = await dbMembers.doc(req.params.id).get();
+      const member = (await dbMembers.doc(req.params.id).get()).data();
 
       if (!member) {
         res.status(404).json({
@@ -49,7 +52,13 @@ export function membersSetup() {
     "/get-my-profile",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const member = (await dbMembers.doc(req.walletAddress).get()).data();
+      let member = (await dbMembers.doc(req.walletAddress).get()).data();
+      member = await include({
+        data: member,
+        propertyName: "teamInvites",
+        propertyNameID: "teamInviteIds",
+        dbCollection: Collections.TeamInvites,
+      });
       // const memberteamInvites = await teamInvites
       //   .doc(member.teamInviteIds)
       //   .get();
@@ -67,7 +76,7 @@ export function membersSetup() {
         });
         return;
       }
-      res.send({ ...member, teamInvites: [] });
+      res.send(member);
     }
   );
   app.post(
@@ -183,9 +192,9 @@ export function membersSetup() {
         roles: [RoleType.BountyHunter],
         teamsJoined: 0,
         walletAddress: req.walletAddress,
-        teamInviteIds: [],
-        createdTeamIds: [],
-        teamsIds: [],
+        teamInviteIDs: [],
+        createdTeamIDs: [],
+        teamIDs: [],
         bountyWinnerIDs: [],
       };
 
@@ -207,7 +216,6 @@ export function membersSetup() {
       res.json({
         message: "Success",
       });
-      console.log();
     }
   );
   app.post(
@@ -256,26 +264,26 @@ export function membersSetup() {
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       const user = await authenticateMember(req, res);
-      console.log(user);
+      // console.log(user);
 
       let winners = [];
       if (!!user.bountyWinnerIDs) {
         for (const item of user.bountyWinnerIDs) {
           let data = (await dbBountyWinners.doc(item).get()).data();
-          data = includeSingle({
+          data = include({
             data,
             dbCollection: Collections.Submissions,
             propertyName: "submission",
             propertyNameID: "submissionID",
           });
           if (data.submission) {
-            data.submission = includeSingle({
+            data.submission = include({
               data: data.submission,
               dbCollection: Collections.Bounties,
               propertyName: "bounty",
               propertyNameID: "bountyID",
             });
-            data.submission = includeSingle({
+            data.submission = include({
               data: data.submission,
               dbCollection: Collections.Teams,
               propertyName: "team",
@@ -391,20 +399,16 @@ export async function InviteToTeam(options: {
   teamName: string;
   fromAddressName: string;
   fromAddress: string;
-  userAddress: string;
+  toMemberAddress: string;
 }) {
-  // const {
-  //   teamID,
-  //   fromAddressName: inviterName,
-  //   fromAddress: inviterAddress,
-  //   userAddress,
-  // } = options;
-  // const team = await prisma.team.findUnique({
-  //   where: {
-  //     id: teamID,
-  //   },
-  // });
-  // // Check if user is already invited
+  const {
+    teamID,
+    fromAddressName: inviterName,
+    fromAddress: inviterAddress,
+    toMemberAddress,
+  } = options;
+  const team = (await dbTeams.doc(teamID).get()).data();
+  // Check if user is already invited
   // const existingInvite = await prisma.teamInvite.findFirst({
   //   where: {
   //     memberAddress: userAddress,
@@ -413,9 +417,27 @@ export async function InviteToTeam(options: {
   //     },
   //   },
   // });
-  // if (!!existingInvite) {
-  //   return "Already invited";
-  // }
+  const existingInvite = await dbTeamInvites
+    .where("memberAddress", "==", toMemberAddress)
+    .where("toTeamId", "==", teamID)
+    .get();
+  if (existingInvite.size > 0) {
+    return "Already invited";
+  }
+  const id = uuid();
+  const invite = await dbTeamInvites.doc(id).create({
+    id,
+    fromAddress: inviterAddress,
+    fromName: inviterName,
+    toTeamID: teamID,
+    toTeamName: team.name,
+    toMemberAddress,
+  } as TeamInvite);
+
+  const toMember = (await dbMembers.doc(toMemberAddress).get()).data();
+  await dbMembers.doc(toMemberAddress).update({
+    teamInviteIds: toMember.teamInviteIds.concat([id]),
+  });
   // const invite = await prisma.teamInvite.create({
   //   data: {
   //     fromAddress: inviterAddress,
@@ -429,16 +451,20 @@ export async function InviteToTeam(options: {
   //     },
   //   },
   // });
-  // if (invite) {
-  //   await prisma.member.update({
-  //     where: {
-  //       walletAddress: userAddress,
-  //     },
-  //     data: {
-  //       membersInvited: {
-  //         increment: 1,
-  //       },
-  //     },
-  //   });
-  // }
+  if (invite) {
+    // await prisma.member.update({
+    //   where: {
+    //     walletAddress: userAddress,
+    //   },
+    //   data: {
+    //     membersInvited: {
+    //       increment: 1,
+    //     },
+    //   },
+    // });
+    const member = (await dbMembers.doc(inviterAddress).get()).data();
+    await dbMembers.doc(toMemberAddress).update({
+      membersInvited: member.membersInvited + 1,
+    });
+  }
 }

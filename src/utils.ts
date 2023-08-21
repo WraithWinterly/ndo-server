@@ -137,115 +137,58 @@ export function validateFields<T>(
   return sanitizedBody as T;
 }
 
-export async function includeMany(options: {
-  data: Object[];
+export async function include(options: {
+  data: Object | Object[];
   propertyName: string;
   propertyNameID: string;
   dbCollection: Collections;
-}): Promise<Object[]> {
-  const { data, propertyName, propertyNameID, dbCollection } = options;
-
+  select?: string[];
+}): Promise<Object | Object[]> {
+  const { data, propertyName, propertyNameID, dbCollection, select } = options;
+  const isArray = Array.isArray(data);
   const dataAny = structuredClone(data) as any;
 
-  for (const item of dataAny) {
-    if (!item[propertyNameID]) {
+  async function fetchDocument(id: string): Promise<Object | undefined> {
+    const snapshot = await db.collection(dbCollection).doc(id).get();
+    let result = snapshot.data();
+    if (!!select) {
+      const temp = result;
+      result = {};
+      for (const s of select) {
+        if (temp[s]) result[s] = temp[s];
+      }
+    }
+    return result;
+  }
+
+  async function processItem(item: any) {
+    const ids = isArray ? item[propertyNameID] : dataAny[propertyNameID];
+
+    // Do not use !ids, an empty string would return as undefined
+    if (ids == null) {
       throw new Error(
-        `The provided object does not have a ${propertyNameID} property.`
+        `The provided object does not have an ID (${propertyNameID}).`
       );
     }
-    const snapshot = await db
-      .collection(dbCollection)
-      .doc(item[propertyNameID])
-      .get();
-    const result = snapshot.data();
-    if (result) {
-      item[propertyName] = result;
-    } else {
-      item[propertyName] = undefined;
+
+    if (typeof ids === "string") {
+      if (ids === "") {
+        item[propertyName] = undefined;
+      } else {
+        const result = await fetchDocument(ids);
+        item[propertyName] = result || undefined;
+      }
+    } else if (Array.isArray(ids)) {
+      const results: Object[] = await Promise.all(ids.map(fetchDocument));
+      item[propertyName] = results.filter((result) => !!result);
     }
   }
 
-  return dataAny;
-}
-
-export async function includeSingle<T>(options: {
-  data: Object;
-  propertyName: string;
-  propertyNameID: string;
-  dbCollection: Collections;
-}): Promise<Object> {
-  const { data, propertyName, propertyNameID, dbCollection } = options;
-  const dataAny = structuredClone(data) as any;
-  //@ts-ignore
-  const id = dataAny[propertyNameID];
-
-  if (id == null) {
-    throw new Error(
-      `The provided object does not have an ID (${propertyNameID}).`
-    );
+  if (isArray) {
+    await Promise.all(dataAny.map(processItem));
+  } else if (typeof data === "object") {
+    await processItem(dataAny);
   }
-
-  if (id === "") {
-    dataAny[propertyName] = {};
-    return Promise.resolve(dataAny);
-  }
-
-  const snapshot = await db.collection(dbCollection).doc(id).get();
-  const result = snapshot.data();
-
-  if (!result) {
-    //@ts-ignore
-    data[propertyName] = undefined;
-  } else {
-    //@ts-ignore
-    data[propertyName] = result;
-  }
-
-  return data;
-}
-export async function includeSingleArray(options: {
-  data: Object;
-  propertyName: string;
-  propertyNameID: string;
-  dbCollection: Collections;
-}): Promise<Object> {
-  const { data, propertyName, propertyNameID, dbCollection } = options;
-  const dataAny = structuredClone(data) as any;
-  //@ts-ignore
-  const ids = dataAny[propertyNameID] as string[];
-
-  if (!ids) {
-    throw new Error(
-      `The provided object does not have an ID (${propertyNameID}).`
-    );
-  }
-
-  if (!Array.isArray(ids)) {
-    throw new Error(`(${propertyNameID}) Not an array.`);
-  }
-
-  const results: Array<Object> = [];
-
-  await Promise.all(
-    ids.map(async (id) => {
-      const snapshot = await db.collection(dbCollection).doc(id).get();
-      const result = snapshot.data();
-
-      if (!!result) {
-        results.push(result);
-      }
-    })
-  );
-
-  dataAny[propertyName] = results;
 
   return dataAny;
 }
-
-// Usage example:
-// const dataWithProjects = await includeMany(
-//   data,
-//   "project",
-//   "projectID",
-//   dbProjects
-// );

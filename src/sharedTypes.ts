@@ -198,7 +198,7 @@ export interface Submission {
   videoDemo: string;
   repo: string;
   createdAt: Date;
-  testCaseIds: string[];
+  testCaseIDs: string[];
   bountyID: string;
   teamID: string;
   winningSubmissionID?: string;
@@ -226,9 +226,9 @@ export interface Member {
   bountiesWon: number;
   teamsJoined: number;
   membersInvited: number;
-  teamInviteIds: string[];
-  createdTeamIds: string[];
-  teamsIds: string[];
+  teamInviteIDs: string[];
+  createdTeamIDs: string[];
+  teamIDs: string[];
   bountyWinnerIDs: string[];
 }
 
@@ -250,6 +250,5 @@ export interface TeamInvite {
   fromName: string;
   toTeamID: string;
   toTeamName: string;
-  member?: Member;
-  memberAddress?: string;
+  toMemberAddress: string;
 }

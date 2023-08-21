@@ -14,8 +14,7 @@ import {
   authenticateToken,
   authenticateMember,
   validateFields,
-  includeSingle,
-  includeMany,
+  include,
 } from "../utils";
 
 export function projectsSetup() {
@@ -42,7 +41,7 @@ export function projectsSetup() {
 
       let data = (await dbProjects.doc(req.params.id).get()).data();
 
-      data = await includeSingle({
+      data = await include({
         data,
         propertyName: "founder",
         propertyNameID: "founderWalletAddress",

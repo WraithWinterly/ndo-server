@@ -3,6 +3,7 @@ import {
   CreateTeamPOSTData,
   InviteToTeamPOSTData,
   JoinTeamPOSTData,
+  Member,
   Team,
 } from "../sharedTypes";
 import { type Response } from "express";
@@ -12,8 +13,7 @@ import {
   ProtectedRequest,
   authenticateMember,
   authenticateToken,
-  includeSingle,
-  includeSingleArray,
+  include,
   validateFields,
 } from "../utils";
 
@@ -22,10 +22,7 @@ export function teamsSetup() {
     "/get-teams",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const teams = (await dbTeams.get()).docs
-        .map((doc) => doc.data())
-        .reverse();
-      // console.log(currTeams);
+      let teams = (await dbTeams.get()).docs.map((doc) => doc.data()).reverse();
       res.send(teams);
     }
   );
@@ -38,7 +35,7 @@ export function teamsSetup() {
       }
 
       let team = (await dbTeams.doc(req.params.id).get()).data();
-      team = await includeSingleArray({
+      team = await include({
         data: team,
         propertyName: "members",
         propertyNameID: "memberIDs",
@@ -94,49 +91,35 @@ export function teamsSetup() {
   app.post(
     "/invite-to-team",
     authenticateToken,
-    // async (req: ProtectedRequest, res: Response) => {
-    //   const { toAddress, toTeam } = validateFields<InviteToTeamPOSTData>(
-    //     [{ name: "toAddress" }, { name: "toTeam" }],
-    //     req.body,
-    //     res
-    //   );
-    //   const member = await authenticateMember(req, res);
+    async (req: ProtectedRequest, res: Response) => {
+      const { toAddress, toTeam } = validateFields<InviteToTeamPOSTData>(
+        [{ name: "toAddress" }, { name: "toTeam" }],
+        req.body,
+        res
+      );
+      const member = await authenticateMember(req, res);
+      const team = (await dbTeams.doc(toTeam).get()).data();
+      if (!team) {
+        return res.send(404).json({ message: "Team not found" });
+      }
 
-    //   try {
-    //     const fromUser = await prisma.member.findUnique({
-    //       where: {
-    //         walletAddress: member.walletAddress,
-    //       },
-    //     });
-    //     const team = await prisma.team.findUnique({
-    //       where: {
-    //         id: toTeam,
-    //       },
-    //     });
-
-    //     const error = await InviteToTeam({
-    //       fromAddress: member.walletAddress,
-    //       fromAddressName: fromUser.firstName,
-    //       teamID: toTeam,
-    //       teamName: team.name,
-    //       userAddress: toAddress,
-    //     });
-    //     if (error?.length > 0) {
-    //       console.error(error);
-    //       // throw error;
-    //       // return res.send(400).json({
-    //       //   message: "Failed to invite member to team",
-    //       // });
-    //     }
-
-    //     res.json({
-    //       message: "Success",
-    //     });
-    //   } catch (e) {
-    //     console.error(e);
-    //     return res.sendStatus(400);
-    //   }
-    // }
+      const error = await InviteToTeam({
+        fromAddress: member.walletAddress,
+        fromAddressName: member.firstName,
+        teamID: toTeam,
+        teamName: team.name,
+        toMemberAddress: toAddress,
+      });
+      if (error?.length > 0) {
+        console.error(error);
+        // throw error;
+        return res.status(400).json({
+          message: "Failed to invite member to team",
+        });
+      } else {
+        return res.status(200).json({ message: "Success" });
+      }
+    },
     async (req: ProtectedRequest, res: Response) => {
       return res.status(200).json({ message: "NOT IMPLEMENTED" });
     }

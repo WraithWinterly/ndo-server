@@ -34,9 +34,9 @@ export const SAMPLE_MEMBERS: Array<Member> = [
     roles: [RoleType.BountyHunter],
     isFounder: false,
     bountyWinnerIDs: [],
-    createdTeamIds: [],
-    teamInviteIds: [],
-    teamsIds: ["3D1DADE6-1493-41CB-84DC-5F53F4860959"],
+    createdTeamIDs: [],
+    teamInviteIDs: [],
+    teamIDs: ["3D1DADE6-1493-41CB-84DC-5F53F4860959"],
     walletAddress: "FC2E5GnpBUs74FtkBaf7Q36JWhbAtSspyVU2mndst7pd",
   },
   {
@@ -53,11 +53,10 @@ export const SAMPLE_MEMBERS: Array<Member> = [
     roles: [],
     isFounder: false,
     bountyWinnerIDs: [],
-    createdTeamIds: [],
-    teamInviteIds: [],
-    teamsIds: [],
-
-    walletAddress: "C579AD02-6733-40A9-9FCF-FDA7E27539C6",
+    createdTeamIDs: [],
+    teamInviteIDs: [],
+    teamIDs: [],
+    walletAddress: "000",
   },
 ];
 

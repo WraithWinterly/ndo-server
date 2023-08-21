@@ -19,9 +19,7 @@ import {
   authenticateToken,
   authenticateMember as authenticateMember,
   validateFields,
-  includeMany,
-  includeSingle,
-  includeSingleArray,
+  include,
 } from "../utils";
 import { auth } from "firebase-admin";
 
@@ -36,12 +34,12 @@ export function bountiesSetup() {
       //   },
       // });
       let data = (await dbBounties.get()).docs.map((doc) => doc.data());
-      data = await includeMany({
+      data = (await include({
         data,
         propertyName: "project",
         propertyNameID: "projectID",
         dbCollection: Collections.Projects,
-      });
+      })) as Object[];
       // console.log(withProj);
       return res.send(data);
     }
@@ -58,40 +56,39 @@ export function bountiesSetup() {
       // Find the bounty from the database
 
       let bounty = (await dbBounties.doc(req.params.id).get()).data();
-      bounty = await includeSingle({
+      bounty = await include({
         data: bounty,
         propertyName: "project",
         propertyNameID: "projectID",
         dbCollection: Collections.Projects,
       });
-      bounty = await includeSingle({
+      bounty = await include({
         data: bounty,
         propertyName: "founder",
         propertyNameID: "founderAddress",
         dbCollection: Collections.Members,
       });
 
-      bounty = await includeSingleArray({
+      bounty = await include({
         data: bounty,
         propertyName: "submissions",
         propertyNameID: "submissionIDs",
         dbCollection: Collections.Submissions,
       });
-      console.log(bounty);
-      bounty = await includeSingle({
+      bounty = await include({
         data: bounty,
         propertyName: "winningSubmission",
         propertyNameID: "winningSubmissionID",
         dbCollection: Collections.Bounties,
       });
-      bounty.submissions = await includeMany({
+      bounty.submissions = (await include({
         data: bounty.submissions,
         propertyName: "team",
         propertyNameID: "teamID",
         dbCollection: Collections.Teams,
-      });
+      })) as Object[];
 
-      console.log(bounty);
+      // console.log(bounty);
       return res.send(bounty);
 
       // const bounty = await prisma.bounty.findUnique({
