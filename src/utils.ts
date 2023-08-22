@@ -62,7 +62,7 @@ export async function authenticateMember(
 
 export interface Field {
   name: string;
-  type?: "string" | "number" | "boolean" | "array" | "any";
+  type?: "string" | "number" | "boolean" | "array" | "nocheck";
   min?: number;
   max?: number;
 }
@@ -104,18 +104,19 @@ export function validateFields<T>(
           continue;
         }
         sanitizedValue = fieldValue;
-      } else if (field.type === "any") {
+      } else if (field.type === "array") {
         if (!Array.isArray(fieldValue)) {
           invalidFields.push(`${field.name} must be an array.`);
           continue;
         }
+        sanitizedValue = fieldValue;
       } else {
-        // field.type === 'any'
+        // field.type === 'nocheck'
         sanitizedValue = fieldValue;
       }
 
       if (
-        field.type !== "any" &&
+        field.type !== "nocheck" &&
         field.min !== undefined &&
         typeof sanitizedValue === "string" &&
         sanitizedValue.length < field.min

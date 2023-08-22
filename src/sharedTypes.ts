@@ -69,7 +69,6 @@ export type SetTestCasesPostData = {
 };
 
 export type StartBountyPOSTData = {
-  address: string;
   forTeam: string;
   bountyID: string;
 };
@@ -138,7 +137,7 @@ export enum BountyStage {
 export enum RoleType {
   Founder = "Founder",
   BountyHunter = "BountyHunter",
-  BountyManager = "PendingBountyManager",
+  BountyManager = "BountyManager",
   BountyDesigner = "BountyDesigner",
   BountyValidator = "BountyValidator",
 }
@@ -166,7 +165,6 @@ export interface Project {
   quotePrice: number;
   stage: ProjectStage;
   founderWalletAddress: string;
-  memberWalletAddress: string;
 }
 
 export interface Bounty {
@@ -178,7 +176,6 @@ export interface Bounty {
   deadline: Date;
   participantsTeamIDs: string[];
   testCases: string[];
-  testCaseIDs: string[];
   stage: BountyStage;
   submissionIDs: string[];
   aboutProject?: string;
@@ -234,11 +231,9 @@ export interface Member {
 
 export interface BountyWinner {
   id: string;
-  bounty: Bounty;
   bountyID: string;
   confirmed: boolean;
   submissionID: string;
-  member: Member;
   memberAddress: string;
   approvedByFounder: boolean;
   approvedByManager: boolean;

@@ -31,7 +31,13 @@ export const SAMPLE_MEMBERS: Array<Member> = [
     membersInvited: 0,
     teamsJoined: 0,
     playingRole: RoleType.BountyHunter,
-    roles: [RoleType.BountyHunter],
+    roles: [
+      RoleType.BountyDesigner,
+      RoleType.BountyHunter,
+      RoleType.BountyManager,
+      RoleType.BountyValidator,
+      RoleType.Founder,
+    ],
     isFounder: false,
     bountyWinnerIDs: [],
     createdTeamIDs: [],
@@ -50,7 +56,7 @@ export const SAMPLE_MEMBERS: Array<Member> = [
     membersInvited: 0,
     teamsJoined: 0,
     playingRole: RoleType.BountyHunter,
-    roles: [],
+    roles: [RoleType.BountyHunter],
     isFounder: false,
     bountyWinnerIDs: [],
     createdTeamIDs: [],
@@ -77,7 +83,6 @@ export const SAMPLE_BOUNTIES: Bounty[] = [
     bountyWinnerID: [],
     submissionIDs: [],
     testCases: [],
-    testCaseIDs: [],
     participantsTeamIDs: [],
     stage: BountyStage.Active,
     winningSubmissionID: "",
@@ -137,7 +142,6 @@ export const SAMPLE_PROJECTS: Project[] = [
     bountyIDs: ["4B1DF291-5B97-4C31-8DB9-D7AB4C05458F"],
     createdAt: new Date(),
     founderWalletAddress: SAMPLE_MEMBERS[0].walletAddress,
-    memberWalletAddress: SAMPLE_MEMBERS[0].walletAddress,
   },
   {
     id: "KSIJ@(SK-4B62-4142-9A8F-DB9FD1B4AEEE",
@@ -150,7 +154,6 @@ export const SAMPLE_PROJECTS: Project[] = [
     bountyIDs: ["4B1DF291-5B97-4C31-8DB9-D7AB4C05458F"],
     createdAt: new Date(),
     founderWalletAddress: SAMPLE_MEMBERS[0].walletAddress,
-    memberWalletAddress: SAMPLE_MEMBERS[0].walletAddress,
   },
 ];
 
@@ -168,54 +171,47 @@ export const SAMPLE_TEAMS: Team[] = [
 ];
 
 export default async function seedDatabaseFirestore() {
-  const batchDeletion = db.batch();
-
-  Object.keys(Collections).forEach((collection) => {
-    const collectionRef = db.collection(collection);
-    collectionRef
-      .get()
-      .then((querySnapshot) => {
-        querySnapshot.forEach((doc) => {
-          batchDeletion.delete(doc.ref);
-        });
-      })
-      .catch((error) => {
-        console.error(`Error deleting documents from ${collection}:`, error);
-      });
-  });
-
-  batchDeletion
-    .commit()
-    .then(() => {
-      console.log(
-        "All documents in the specified collections deleted successfully."
-      );
-    })
-    .catch((error) => {
-      console.error("Error committing batch:", error);
-    });
-
-  const batch = db.batch();
-
-  SAMPLE_MEMBERS.forEach((member) => {
-    const memberRef = dbMembers.doc(member.walletAddress);
-    batch.set(memberRef, member);
-  });
-
-  SAMPLE_BOUNTIES.forEach((bounty) => {
-    const bountyRef = dbBounties.doc(bounty.id);
-    batch.set(bountyRef, bounty);
-  });
-
-  SAMPLE_TEAMS.forEach((team) => {
-    const teamRef = dbTeams.doc(team.id);
-    batch.set(teamRef, team);
-  });
-
-  SAMPLE_PROJECTS.forEach((project) => {
-    const projectRef = dbProjects.doc(project.id);
-    batch.set(projectRef, project);
-  });
-
-  await batch.commit();
+  // const batchDeletion = db.batch();
+  // Object.keys(Collections).forEach((collection) => {
+  //   const collectionRef = db.collection(collection);
+  //   collectionRef
+  //     .get()
+  //     .then((querySnapshot) => {
+  //       querySnapshot.forEach((doc) => {
+  //         batchDeletion.delete(doc.ref);
+  //       });
+  //     })
+  //     .catch((error) => {
+  //       console.error(`Error deleting documents from ${collection}:`, error);
+  //     });
+  // });
+  // batchDeletion
+  //   .commit()
+  //   .then(() => {
+  //     console.log(
+  //       "All documents in the specified collections deleted successfully."
+  //     );
+  //   })
+  //   .catch((error) => {
+  //     console.error("Error committing batch:", error);
+  //   });
+  // batchDeletion.commit();
+  // const batch = db.batch();
+  // SAMPLE_MEMBERS.forEach((member) => {
+  //   const memberRef = dbMembers.doc(member.walletAddress);
+  //   batch.set(memberRef, member);
+  // });
+  // SAMPLE_BOUNTIES.forEach((bounty) => {
+  //   const bountyRef = dbBounties.doc(bounty.id);
+  //   batch.set(bountyRef, bounty);
+  // });
+  // SAMPLE_TEAMS.forEach((team) => {
+  //   const teamRef = dbTeams.doc(team.id);
+  //   batch.set(teamRef, team);
+  // });
+  // SAMPLE_PROJECTS.forEach((project) => {
+  //   const projectRef = dbProjects.doc(project.id);
+  //   batch.set(projectRef, project);
+  // });
+  // await batch.commit();
 }

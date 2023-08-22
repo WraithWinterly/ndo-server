@@ -41,6 +41,7 @@ export enum Collections {
   TeamInvites = "ndo-team-invites",
   BountyWinners = "ndo-bounty-winners",
   Submissions = "ndo-submissions",
+  TestCases = "ndo-test-cases",
 }
 
 export const dbMembers = db.collection(Collections.Members);
@@ -49,6 +50,8 @@ export const dbTeams = db.collection(Collections.Teams);
 export const dbProjects = db.collection(Collections.Projects);
 export const dbTeamInvites = db.collection(Collections.TeamInvites);
 export const dbBountyWinners = db.collection(Collections.BountyWinners);
+export const dbTestCases = db.collection(Collections.TestCases);
+export const dbSubmissions = db.collection(Collections.Submissions);
 
 export const app: Express = express();
 const port = process.env.PORT;
@@ -127,9 +130,9 @@ app.post("/authorize", (req: Request, res: Response) => {
 });
 
 app.get("/seed", async (req: Request, res: Response) => {
-  console.log("[i] Starting seed");
+  // console.log("[i] Starting seed");
   await seedDatabaseFirestore();
-  console.log("[i] Seeding complete");
+  // console.log("[i] Seeding complete");
   res.json({ message: "Seeding Complete" });
 });
 

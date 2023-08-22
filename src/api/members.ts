@@ -56,20 +56,10 @@ export function membersSetup() {
       member = await include({
         data: member,
         propertyName: "teamInvites",
-        propertyNameID: "teamInviteIds",
+        propertyNameID: "teamInviteIDs",
         dbCollection: Collections.TeamInvites,
       });
-      // const memberteamInvites = await teamInvites
-      //   .doc(member.teamInviteIds)
-      //   .get();
-      // const member = await prisma.member.findUnique({
-      //   where: {
-      //     walletAddress: req.params.id,
-      //   },
-      //   include: {
-      //     teamInvites: true,
-      //   },
-      // });
+
       if (!member) {
         res.status(404).json({
           message: "Member not found",
@@ -102,16 +92,6 @@ export function membersSetup() {
         return;
       }
 
-      // console.log("addresses: ", addresses);
-
-      // const members = await prisma.member.findMany({
-      //   where: {
-      //     walletAddress: {
-      //       in: addresses,
-      //     },
-      //   },
-      // });
-
       if (!dbMembers) {
         res.status(404).json({
           message: "Member not found",
@@ -125,34 +105,26 @@ export function membersSetup() {
     "/get-leaderboard-members",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      // const members = await prisma.member.findMany({
-      //   orderBy: {
-      //     bountiesWon: "desc",
-      //   },
-      //   where: {
-      //     isFounder: false,
-      //   },
-      //   take: 10,
-      // });
-      // res.send(members);
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      const memberDocs = await dbMembers
+        .orderBy("bountiesWon", "desc")
+        .limit(10)
+        .where("isFounder", "==", "false")
+        .get();
+      const members = memberDocs.docs.map((doc) => doc.data());
+      res.send(members);
     }
   );
   app.get(
     "/get-leaderboard-founders",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      // const members = await prisma.member.findMany({
-      //   orderBy: {
-      //     bountiesWon: "desc",
-      //   },
-      //   where: {
-      //     isFounder: true,
-      //   },
-      //   take: 10,
-      // });
-      // res.send(members);
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      const memberDocs = await dbMembers
+        .orderBy("bountiesWon", "desc")
+        .limit(10)
+        .where("isFounder", "==", "true")
+        .get();
+      const members = memberDocs.docs.map((doc) => doc.data());
+      res.send(members);
     }
   );
   app.post(
@@ -197,20 +169,12 @@ export function membersSetup() {
         teamIDs: [],
         bountyWinnerIDs: [],
       };
+      const existingUser = await dbMembers.doc(req.walletAddress).get();
+      if (existingUser.exists) {
+        return res.status(400).json({ message: "Member already exists" });
+      }
 
-      // const existingUser = await prisma.member.findUnique({
-      //   where: {
-      //     walletAddress: newMember.walletAddress,
-      //   },
-      // });
-      // if (!!existingUser) {
-      //   res.status(400).json({ message: "Member already exists" });
-      //   return;
-      // }
-
-      // await prisma.member.create({
-      //   data: newMember,
-      // });
+      await dbMembers.doc(req.walletAddress).set(newMember);
 
       console.log("Member created");
       res.json({
@@ -295,88 +259,55 @@ export function membersSetup() {
         }
       }
 
-      // const walletAddress = req.params.id;
-      // if (!walletAddress) {
-      //   return res.status(400).json({
-      //     message: "walletAddress is missing",
-      //   });
-      // }
-      // const winners = await prisma.bountyWinner.findMany({
-      //   where: {
-      //     bounty: {
-      //       winningSubmission: {
-      //         team: {
-      //           members: {
-      //             some: {
-      //               walletAddress,
-      //             },
-      //           },
-      //         },
-      //       },
-      //     },
-      //   },
-      //   include: {
-      //     submission: {
-      //       include: {
-      //         team: true,
-      //         bounty: true,
-      //       },
-      //     },
-      //   },
-      // });
-
       res.send(winners);
-      // return res.status(200).json({ message: "NOT IMPLEMENTED" });
     }
   );
   app.post(
     "/confirm-reward",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      // const { submissionWinnerID } = validateFields<ConfirmRewardPostData>(
-      //   [{ name: "submissionWinnerID" }],
-      //   req.body,
-      //   res
-      // );
+      const { submissionWinnerID } = validateFields<ConfirmRewardPostData>(
+        [{ name: "submissionWinnerID" }],
+        req.body,
+        res
+      );
 
-      // const member = await authenticateMember(req, res);
+      const member = await authenticateMember(req, res);
 
-      // const bountyWinner = await prisma.bountyWinner.findUnique({
-      //   where: {
-      //     id: submissionWinnerID,
-      //   },
-      //   include: {
-      //     submission: {
-      //       include: {
-      //         team: true,
-      //       },
-      //     },
-      //   },
-      // });
-      // if (
-      //   bountyWinner.submission.team.creatorAddress !== member.walletAddress
-      // ) {
-      //   res.status(400).json({ message: "You are not the team's creator" });
-      // }
-      // const memberUpdate = await prisma.member.update({
-      //   where: {
-      //     walletAddress: member.walletAddress,
-      //   },
-      //   data: {
-      //     bountiesWon: {
-      //       increment: 1,
-      //     },
-      //   },
-      // });
-      // const deletion = await prisma.bountyWinner.delete({
-      //   where: {
-      //     id: submissionWinnerID,
-      //   },
-      // });
-      // res.status(200).json({
-      //   message: "Success",
-      // });
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      const bountyWinnerDoc = await dbBountyWinners
+        .doc(submissionWinnerID)
+        .get();
+      if (!bountyWinnerDoc.exists) {
+        return res.status(400).json({ message: "Submission not found" });
+      }
+      let bountyWinner = bountyWinnerDoc.data();
+      bountyWinner = include({
+        data: bountyWinner,
+        propertyName: "submission",
+        propertyNameID: "submissionID",
+        dbCollection: Collections.Submissions,
+      });
+      bountyWinner.submission = include({
+        data: bountyWinner.submission,
+        propertyName: "team",
+        propertyNameID: "teamID",
+        dbCollection: Collections.Teams,
+      });
+
+      if (
+        bountyWinner.submission.team.creatorAddress !== member.walletAddress
+      ) {
+        res.status(400).json({ message: "You are not the team's creator" });
+      }
+
+      await dbMembers.doc(member.walletAddress).update({
+        bountiesWon: member.bountiesWon + 1,
+      });
+      await dbBountyWinners.doc(submissionWinnerID).delete();
+
+      res.status(200).json({
+        message: "Success",
+      });
     }
   );
   app.post(
@@ -409,23 +340,16 @@ export async function InviteToTeam(options: {
   } = options;
   const team = (await dbTeams.doc(teamID).get()).data();
   // Check if user is already invited
-  // const existingInvite = await prisma.teamInvite.findFirst({
-  //   where: {
-  //     memberAddress: userAddress,
-  //     AND: {
-  //       toTeamId: teamID,
-  //     },
-  //   },
-  // });
+
   const existingInvite = await dbTeamInvites
     .where("memberAddress", "==", toMemberAddress)
-    .where("toTeamId", "==", teamID)
+    .where("toTeamID", "==", teamID)
     .get();
   if (existingInvite.size > 0) {
     return "Already invited";
   }
   const id = uuid();
-  const invite = await dbTeamInvites.doc(id).create({
+  await dbTeamInvites.doc(id).create({
     id,
     fromAddress: inviterAddress,
     fromName: inviterName,
@@ -436,35 +360,11 @@ export async function InviteToTeam(options: {
 
   const toMember = (await dbMembers.doc(toMemberAddress).get()).data();
   await dbMembers.doc(toMemberAddress).update({
-    teamInviteIds: toMember.teamInviteIds.concat([id]),
+    teamInviteIDs: toMember.teamInviteIDs.concat([id]),
   });
-  // const invite = await prisma.teamInvite.create({
-  //   data: {
-  //     fromAddress: inviterAddress,
-  //     fromName: inviterName,
-  //     toTeamId: teamID,
-  //     toTeamName: team.name,
-  //     member: {
-  //       connect: {
-  //         walletAddress: userAddress,
-  //       },
-  //     },
-  //   },
-  // });
-  if (invite) {
-    // await prisma.member.update({
-    //   where: {
-    //     walletAddress: userAddress,
-    //   },
-    //   data: {
-    //     membersInvited: {
-    //       increment: 1,
-    //     },
-    //   },
-    // });
-    const member = (await dbMembers.doc(inviterAddress).get()).data();
-    await dbMembers.doc(toMemberAddress).update({
-      membersInvited: member.membersInvited + 1,
-    });
-  }
+
+  const member = (await dbMembers.doc(inviterAddress).get()).data();
+  await dbMembers.doc(toMemberAddress).update({
+    membersInvited: member.membersInvited + 1,
+  });
 }

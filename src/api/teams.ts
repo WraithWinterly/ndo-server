@@ -1,4 +1,4 @@
-import { Collections, app, dbTeams } from "..";
+import { Collections, app, dbMembers, dbTeamInvites, dbTeams } from "..";
 import {
   CreateTeamPOSTData,
   InviteToTeamPOSTData,
@@ -127,114 +127,93 @@ export function teamsSetup() {
   app.post(
     "/join-team-from-invite",
     authenticateToken,
-    // async (req: ProtectedRequest, res: Response) => {
-    //   teamInvite(req, res, "accept");
-    // }
     async (req: ProtectedRequest, res: Response) => {
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      const member = await authenticateMember(req, res);
+      teamInvite(req, res, "accept", member);
     }
   );
   app.post(
     "/deny-team-from-invite",
     authenticateToken,
-    // async (req: ProtectedRequest, res: Response) => {
-    //   teamInvite(req, res, "reject");
-    // }
     async (req: ProtectedRequest, res: Response) => {
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      const member = await authenticateMember(req, res);
+      teamInvite(req, res, "reject", member);
     }
   );
   app.get(
     "/get-team-pending-invites/:id",
-    // async (req: ProtectedRequest, res: Response) => {
-    //   console.log("test");
-    //   if (!req.params.id)
-    //     return res.send(400).json({
-    //       message: "No team ID provided",
-    //     });
-    //   const invites = await prisma.teamInvite.findMany({
-    //     where: {
-    //       toTeamId: req.params.id,
-    //     },
-    //   });
-    //   res.send(invites);
-    // }
     async (req: ProtectedRequest, res: Response) => {
-      return res.status(200).json({ message: "NOT IMPLEMENTED" });
+      console.log("test");
+      if (!req.params.id)
+        return res.send(400).json({
+          message: "No team ID provided",
+        });
+      const inviteDocs = await dbTeamInvites
+        .where("toTeamID", "==", req.params.id)
+        .get();
+      const invites = inviteDocs.docs.map((doc) => doc.data());
+
+      res.send(invites);
     }
   );
 }
 
-// async function teamInvite(
-//   req: ProtectedRequest,
-//   res: Response,
-//   type: "accept" | "reject"
-// ) {
-//   const { toTeamID } = validateFields<JoinTeamPOSTData>(
-//     [{ name: "toTeamID" }],
-//     req.body,
-//     res
-//   );
-//   const authMember = await authenticateMember(req, res);
-//   // Ensure correct body data
-//   const member = await prisma.member.findUnique({
-//     where: {
-//       walletAddress: authMember.walletAddress,
-//     },
-//     include: {
-//       teams: true,
-//     },
-//   });
-//   if (!member) return res.status(400).json({ message: "User not found" });
-//   try {
-//     const team = await prisma.team.findUnique({
-//       where: {
-//         id: toTeamID,
-//       },
-//       include: {
-//         members: true,
-//       },
-//     });
-//     // Remove their pending invite
-//     await prisma.teamInvite.deleteMany({
-//       where: {
-//         fromAddress: authMember.walletAddress,
-//         AND: {
-//           toTeamId: toTeamID,
-//         },
-//       },
-//     });
+async function teamInvite(
+  req: ProtectedRequest,
+  res: Response,
+  type: "accept" | "reject",
+  member: Member
+) {
+  const { toTeamID } = validateFields<JoinTeamPOSTData>(
+    [{ name: "toTeamID" }],
+    req.body,
+    res
+  );
+  const authMember = await authenticateMember(req, res);
+  // Ensure correct body data
+  const memberWithTeams = (await include({
+    data: member,
+    propertyName: "teams",
+    propertyNameID: "teamIDs",
+    dbCollection: Collections.Teams,
+  })) as Member & { teams: Team[] };
 
-//     // If they accept, add them to the team
-//     if (type === "accept") {
-//       // Add to team
+  try {
+    let teamDoc = await dbTeams.doc(toTeamID).get();
+    if (!teamDoc.exists) {
+      return res.send(404).json({ message: "Team not found" });
+    }
+    let team = teamDoc.data();
+    team = await include({
+      data: team,
+      propertyName: "members",
+      propertyNameID: "memberIDs",
+      dbCollection: Collections.Members,
+    });
+    const invites = await dbTeamInvites
+      .where("fromAddress", "==", authMember.walletAddress)
+      .where("toTeamID", "==", toTeamID)
+      .get();
+    invites.docs.forEach((doc) => {
+      doc.ref.delete();
+    });
+    // Remove their pending invite
+    // If they accept, add them to the team
+    if (type === "accept") {
+      // Add to team
+      await dbTeamInvites.doc(team.id).update({
+        members: team.members.concat(authMember.walletAddress),
+      });
+      await dbMembers.doc(authMember.walletAddress).update({
+        teamsJoined: Number(memberWithTeams.teams.length),
+      });
+    }
 
-//       await prisma.team.update({
-//         where: {
-//           id: team.id,
-//         },
-//         data: {
-//           members: {
-//             connect: { walletAddress: authMember.walletAddress },
-//           },
-//         },
-//       });
-//       // Update teamsJoined stat
-//       await prisma.member.update({
-//         where: {
-//           walletAddress: authMember.walletAddress,
-//         },
-//         data: {
-//           teamsJoined: Number(member.teams.length),
-//         },
-//       });
-//     }
-//     console.log("Success");
-//     res.json({
-//       message: "Success",
-//     });
-//   } catch (e) {
-//     console.error(e);
-//     return res.sendStatus(400);
-//   }
-// }
+    res.json({
+      message: "Success",
+    });
+  } catch (e) {
+    console.error(e);
+    return res.sendStatus(400);
+  }
+}
