@@ -181,7 +181,7 @@ export function bountiesSetup() {
 
       // Also check the validity of specific fields (e.g., startDate and deadline)
       // Validation for startDate and deadline
-      const startDate = new Date(bounty.postDate);
+      const startDate = new Date(bounty.startDate);
       const deadline = new Date(bounty.deadline);
 
       if (startDate > deadline) {
@@ -220,9 +220,9 @@ export function bountiesSetup() {
         description: bounty.description,
         aboutProject: bounty.aboutProject,
         reward: bounty.reward,
-        deadline: bounty.deadline,
+        deadline: new Date(bounty.deadline),
         headerSections: bounty.headerSections,
-        postDate: new Date(),
+        startDate: new Date(bounty.startDate),
         types: bounty.types,
         stage: draft ? BountyStage.Draft : BountyStage.PendingApproval,
         approvedByFounder: false,
@@ -240,9 +240,12 @@ export function bountiesSetup() {
       const proj = (
         await dbProjects.doc(bounty.projectID).get()
       ).data() as Project;
-      await dbProjects.doc(bounty.projectID).update({
-        bountyIDs: proj.bountyIDs.concat(id),
-      });
+      if (draft && !proj.bountyIDs.includes(id)) {
+        await dbProjects.doc(bounty.projectID).update({
+          bountyIDs: proj.bountyIDs.concat(id),
+        });
+      }
+
       // Return success response
       return res.status(200).json({ message: "Bounty created successfully" });
     }
@@ -469,9 +472,10 @@ export function bountiesSetup() {
           });
         });
 
-      const id = uuid();
-      await dbSubmissions.doc(id).create({
-        id,
+      let submissionID = uuid();
+
+      await dbSubmissions.doc(submissionID).create({
+        id: submissionID,
         videoDemo: videoDemo,
         repo: repo,
         bountyID: bountyID,
@@ -482,18 +486,25 @@ export function bountiesSetup() {
         winningSubmissionID: "",
       } as Submission);
 
-      await dbBounties.doc(bountyID).update({
-        submissionIDs: bounty.submissionIDs.concat(id),
+      await dbTeams.doc(teamID).update({
+        submissionIDs: team.submissionIDs.concat(submissionID),
       });
-
+      await dbBounties.doc(bountyID).update({
+        submissionIDs: bounty.submissionIDs.concat(submissionID),
+      });
+      const idArray: string[] = [];
       bounty.testCases.forEach(async (testCase) => {
         const id = uuid();
+        idArray.push(id);
         await dbTestCases.doc(id).set({
           id,
           text: testCase,
           approved: false,
           submissionID: id,
         });
+      });
+      dbSubmissions.doc(submissionID).update({
+        testCaseIDs: idArray,
       });
 
       res.status(200).json({ message: "Success" });
@@ -736,14 +747,14 @@ export function bountiesSetup() {
         if (data.approvedByFounder && data.approvedByManager) {
           // We know its confirmed
           await dbBountyWinners.doc(submission.bountyID).update({
-            stage: BountyStage.Completed,
+            stage: BountyStage.Active,
             winningSubmission: submission.id,
           });
           await dbBountyWinners.doc(submission.bountyID).update({
             confirmed: true,
           });
-          await dbBountyWinners.doc(submission.bountyID).update({
-            stage: BountyStage.Completed,
+          await dbProjects.doc(submission.bounty.projectID).update({
+            stage: ProjectStage.Ready,
           });
         }
       }

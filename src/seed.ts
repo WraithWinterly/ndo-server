@@ -72,7 +72,7 @@ export const SAMPLE_BOUNTIES: Bounty[] = [
     title: "Front-End Cross-Platform Flutter Application",
     description:
       "Build working and deployable code and final software package for Front-End Cross-Platform application, built using Flutter.",
-    postDate: new Date("2021-01-01"),
+    startDate: new Date("2021-01-01"),
     projectID: "D283300B-4B62-4142-9A8F-DB9FD1B4AEEE",
     types: [BountyType.Frontend],
     reward: 100,

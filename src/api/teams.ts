@@ -151,9 +151,9 @@ export function teamsSetup() {
       const inviteDocs = await dbTeamInvites
         .where("toTeamID", "==", req.params.id)
         .get();
-      const invites = inviteDocs.docs.map((doc) => doc.data());
-
-      res.send(invites);
+      const inviteDataArray = inviteDocs.docs.map((doc) => doc.data());
+      console.log("in", inviteDataArray);
+      res.send(inviteDataArray);
     }
   );
 }

@@ -22,7 +22,7 @@ export type CreateBountyData = {
   aboutProject: string;
   reward: number;
   projectID: string;
-  postDate: Date;
+  startDate: Date;
   deadline: Date;
   types: BountyType[];
   headerSections: { [x: string]: string[] };
@@ -171,7 +171,7 @@ export interface Bounty {
   id: string;
   title: string;
   description: string;
-  postDate: Date;
+  startDate: Date;
   types: BountyType[];
   deadline: Date;
   participantsTeamIDs: string[];

@@ -98,7 +98,16 @@ export function membersSetup() {
         });
         return;
       }
-      return res.send(dbMembers);
+      const members: Array<Member> = [];
+      addresses.forEach(async (address) => {
+        const foundDoc = await dbMembers.doc(address).get();
+        if (!foundDoc.exists) {
+          return;
+        }
+        const found = foundDoc.data();
+        members.push(found as Member);
+      });
+      return res.send(members);
     }
   );
   app.get(
