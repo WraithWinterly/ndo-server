@@ -76,6 +76,7 @@ export function teamsSetup() {
           createdAt: new Date(),
           memberIDs: [member.walletAddress],
           submissionIDs: [],
+          winningSubmissionIDs: [],
         };
         dbTeams.doc(createdTeam.id).set(createdTeam);
 

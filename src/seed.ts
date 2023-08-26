@@ -1,6 +1,5 @@
 import {
   dbBounties,
-  dbBountyWinners,
   db,
   dbMembers,
   dbProjects,
@@ -39,7 +38,6 @@ export const SAMPLE_MEMBERS: Array<Member> = [
       RoleType.Founder,
     ],
     isFounder: false,
-    bountyWinnerIDs: [],
     createdTeamIDs: [],
     teamInviteIDs: [],
     teamIDs: ["3D1DADE6-1493-41CB-84DC-5F53F4860959"],
@@ -58,7 +56,6 @@ export const SAMPLE_MEMBERS: Array<Member> = [
     playingRole: RoleType.BountyHunter,
     roles: [RoleType.BountyHunter],
     isFounder: false,
-    bountyWinnerIDs: [],
     createdTeamIDs: [],
     teamInviteIDs: [],
     teamIDs: [],
@@ -80,9 +77,7 @@ export const SAMPLE_BOUNTIES: Bounty[] = [
     approvedByFounder: true,
     approvedByManager: true,
     approvedByValidator: true,
-    bountyWinnerID: [],
     submissionIDs: [],
-    testCases: [],
     participantsTeamIDs: [],
     stage: BountyStage.Active,
     winningSubmissionID: "",
@@ -167,6 +162,7 @@ export const SAMPLE_TEAMS: Team[] = [
     memberIDs: ["FC2E5GnpBUs74FtkBaf7Q36JWhbAtSspyVU2mndst7pd"],
     createdAt: new Date(),
     submissionIDs: [],
+    winningSubmissionIDs: [],
   },
 ];
 

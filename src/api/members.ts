@@ -2,8 +2,8 @@ import {
   Collections,
   app,
   db,
-  dbBountyWinners,
   dbMembers,
+  dbSubmissions,
   dbTeamInvites,
   dbTeams,
 } from "../";
@@ -11,11 +11,15 @@ import {
 import { Response } from "express";
 
 import {
+  Bounty,
   ChangeRolePOSTData,
   ConfirmRewardPostData,
   CreateProfilePOSTData,
   Member,
   RoleType,
+  Submission,
+  SubmissionState,
+  Team,
   TeamInvite,
 } from "../sharedTypes";
 import {
@@ -176,7 +180,6 @@ export function membersSetup() {
         teamInviteIDs: [],
         createdTeamIDs: [],
         teamIDs: [],
-        bountyWinnerIDs: [],
       };
       const existingUser = await dbMembers.doc(req.walletAddress).get();
       if (existingUser.exists) {
@@ -236,83 +239,86 @@ export function membersSetup() {
     "/get-my-bounty-wins",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const user = await authenticateMember(req, res);
+      let member = (await authenticateMember(req, res)) as any;
       // console.log(user);
+      member = (await include({
+        data: member,
+        propertyName: "teams",
+        propertyNameID: "teamIDs",
+        dbCollection: Collections.Teams,
+      })) as Member & { team: Team[] };
 
       let winners = [];
-      if (!!user.bountyWinnerIDs) {
-        for (const item of user.bountyWinnerIDs) {
-          let data = (await dbBountyWinners.doc(item).get()).data();
-          data = include({
-            data,
-            dbCollection: Collections.Submissions,
-            propertyName: "submission",
-            propertyNameID: "submissionID",
-          });
-          if (data.submission) {
-            data.submission = include({
-              data: data.submission,
-              dbCollection: Collections.Bounties,
-              propertyName: "bounty",
-              propertyNameID: "bountyID",
-            });
-            data.submission = include({
-              data: data.submission,
-              dbCollection: Collections.Teams,
-              propertyName: "team",
-              propertyNameID: "teamID",
-            });
+      let submissionIDs: Array<string> = [];
+      for (const team of member.teams as Team[]) {
+        submissionIDs = submissionIDs.concat(team.submissionIDs as string[]);
+      }
+
+      if (!!member.teams) {
+        for (const submissionID of submissionIDs) {
+          let data = (await dbSubmissions.doc(submissionID).get()).data();
+          if (!data || data.state !== SubmissionState.WinnerConfirmed) {
+            continue;
           }
 
+          data = await include({
+            data: data,
+            dbCollection: Collections.Bounties,
+            propertyName: "bounty",
+            propertyNameID: "bountyID",
+          });
+          data = await include({
+            data: data,
+            dbCollection: Collections.Teams,
+            propertyName: "team",
+            propertyNameID: "teamID",
+          });
+          data = data as Submission & { team: Team; bounty: Bounty };
           winners.push(data);
         }
       }
-
-      res.send(winners);
+      console.log(winners);
+      return res.send(winners);
     }
   );
   app.post(
     "/confirm-reward",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const { submissionWinnerID } = validateFields<ConfirmRewardPostData>(
-        [{ name: "submissionWinnerID" }],
+      const { submissionID } = validateFields<ConfirmRewardPostData>(
+        [{ name: "submissionID" }],
         req.body,
         res
       );
 
       const member = await authenticateMember(req, res);
 
-      const bountyWinnerDoc = await dbBountyWinners
-        .doc(submissionWinnerID)
-        .get();
-      if (!bountyWinnerDoc.exists) {
+      const submissionDoc = await dbSubmissions.doc(submissionID).get();
+      if (!submissionDoc.exists) {
         return res.status(400).json({ message: "Submission not found" });
       }
-      let bountyWinner = bountyWinnerDoc.data();
-      bountyWinner = include({
-        data: bountyWinner,
-        propertyName: "submission",
-        propertyNameID: "submissionID",
-        dbCollection: Collections.Submissions,
-      });
-      bountyWinner.submission = include({
-        data: bountyWinner.submission,
+      let submission = submissionDoc.data();
+      submission = await include({
+        data: submission,
         propertyName: "team",
         propertyNameID: "teamID",
         dbCollection: Collections.Teams,
       });
+      if (submission.state != SubmissionState.WinnerConfirmed) {
+        return res.status(400).json({ message: "Submission not confirmed" });
+      }
 
-      if (
-        bountyWinner.submission.team.creatorAddress !== member.walletAddress
-      ) {
+      if (submission.team.creatorAddress !== member.walletAddress) {
         res.status(400).json({ message: "You are not the team's creator" });
       }
 
       await dbMembers.doc(member.walletAddress).update({
         bountiesWon: member.bountiesWon + 1,
       });
-      await dbBountyWinners.doc(submissionWinnerID).delete();
+
+      await dbSubmissions
+        .doc(submissionID)
+        .update({ state: SubmissionState.WinnerAndRewardClaimed });
 
       res.status(200).json({
         message: "Success",

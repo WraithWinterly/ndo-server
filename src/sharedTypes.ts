@@ -55,12 +55,14 @@ export type ApproveDisapproveBountyWinnerPostData = {
 };
 
 export type ConfirmRewardPostData = {
-  submissionWinnerID: string;
+  submissionID: string;
 };
 
 export type ApproveTestCasePostData = {
   submissionID: string;
-  testCases: TestCase[];
+  testCases: string[];
+  reason: string;
+  type: "approve" | "reject" | "approve-winner";
 };
 
 export type SetTestCasesPostData = {
@@ -152,6 +154,7 @@ export interface Team {
   memberIDs: string[];
   creatorAddress: string;
   submissionIDs: string[];
+  winningSubmissionIDs: string[];
 }
 
 export interface Project {
@@ -175,38 +178,40 @@ export interface Bounty {
   types: BountyType[];
   deadline: Date;
   participantsTeamIDs: string[];
-  testCases: string[];
   stage: BountyStage;
   submissionIDs: string[];
   aboutProject?: string;
   headerSections?: any;
-  winningSubmissionID: string;
   approvedByFounder: boolean;
   approvedByManager: boolean;
   approvedByValidator: boolean;
   reward: number;
   founderAddress: string;
   projectID: string;
-  bountyWinnerID: string[];
+  winningSubmissionID: string;
 }
 
+export enum SubmissionState {
+  Pending = "Pending",
+  Approved = "Approved",
+  Rejected = "Rejected",
+  // We can infer if it is one of these states, it is also approved
+  WinnerPendingConfirmation = "WinnerPendingConfirmation",
+  WinnerConfirmed = "WinnerConfirmed",
+  WinnerAndRewardClaimed = "WinnerAndRewardClaimed",
+}
 export interface Submission {
   id: string;
   videoDemo: string;
   repo: string;
   createdAt: Date;
-  testCaseIDs: string[];
+  testCases: string[];
+  state: SubmissionState;
+  reason: string;
   bountyID: string;
   teamID: string;
-  winningSubmissionID?: string;
-  bountyWinnerID?: string;
-}
-
-export interface TestCase {
-  id: string;
-  text: string;
-  approved: boolean;
-  submissionID?: string;
+  isWinnerApprovedByFounder: boolean;
+  isWinnerApprovedByManager: boolean;
 }
 
 export interface Member {
@@ -226,17 +231,6 @@ export interface Member {
   teamInviteIDs: string[];
   createdTeamIDs: string[];
   teamIDs: string[];
-  bountyWinnerIDs: string[];
-}
-
-export interface BountyWinner {
-  id: string;
-  bountyID: string;
-  confirmed: boolean;
-  submissionID: string;
-  memberAddress: string;
-  approvedByFounder: boolean;
-  approvedByManager: boolean;
 }
 
 export interface TeamInvite {

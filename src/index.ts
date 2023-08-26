@@ -39,7 +39,6 @@ export enum Collections {
   Teams = "ndo-teams",
   Projects = "ndo-projects",
   TeamInvites = "ndo-team-invites",
-  BountyWinners = "ndo-bounty-winners",
   Submissions = "ndo-submissions",
   TestCases = "ndo-test-cases",
 }
@@ -49,8 +48,6 @@ export const dbBounties = db.collection(Collections.Bounties);
 export const dbTeams = db.collection(Collections.Teams);
 export const dbProjects = db.collection(Collections.Projects);
 export const dbTeamInvites = db.collection(Collections.TeamInvites);
-export const dbBountyWinners = db.collection(Collections.BountyWinners);
-export const dbTestCases = db.collection(Collections.TestCases);
 export const dbSubmissions = db.collection(Collections.Submissions);
 
 export const app: Express = express();

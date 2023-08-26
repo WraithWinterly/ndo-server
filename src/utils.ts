@@ -152,9 +152,17 @@ export async function include(options: {
   async function fetchDocument(id: string): Promise<Object | undefined> {
     const snapshot = await db.collection(dbCollection).doc(id).get();
     let result = snapshot.data();
+    if (!result) {
+      console.warn(
+        `Document ${id} not found, but is in the ID array. ${propertyNameID} @ ${dbCollection}`
+      );
+      return undefined;
+    }
+
     if (!!select) {
       const temp = result;
       result = {};
+
       for (const s of select) {
         if (temp[s]) result[s] = temp[s];
       }
@@ -167,9 +175,10 @@ export async function include(options: {
 
     // Do not use !ids, an empty string would return as undefined
     if (ids == null) {
-      throw new Error(
+      console.warn(
         `The provided object does not have an ID (${propertyNameID}).`
       );
+      return item;
     }
 
     if (typeof ids === "string") {

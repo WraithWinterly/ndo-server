@@ -3,11 +3,9 @@ import {
   app,
   db,
   dbBounties,
-  dbBountyWinners,
   dbProjects,
   dbSubmissions,
   dbTeams,
-  dbTestCases,
 } from "..";
 
 import { type Response } from "express";
@@ -27,8 +25,7 @@ import {
   ProjectStage,
   Submission,
   Team,
-  TestCase,
-  BountyWinner,
+  SubmissionState,
 } from "../sharedTypes";
 import { v4 as uuid } from "uuid";
 import {
@@ -51,7 +48,7 @@ export function bountiesSetup() {
         propertyNameID: "projectID",
         dbCollection: Collections.Projects,
       })) as Object[];
-      // console.log(withProj);
+
       return res.send(data);
     }
   );
@@ -63,7 +60,7 @@ export function bountiesSetup() {
 
       // If it is not provided, return 400.
       if (!req.params.id) return res.status(400).json({ message: "No ID" });
-
+      const member = await authenticateMember(req, res);
       // Find the bounty from the database
 
       let bounty = (await dbBounties.doc(req.params.id).get()).data();
@@ -85,20 +82,32 @@ export function bountiesSetup() {
         propertyName: "submissions",
         propertyNameID: "submissionIDs",
         dbCollection: Collections.Submissions,
-      });
-      console.log("dime pues ", bounty.submissionIDs);
-      bounty = await include({
-        data: bounty,
-        propertyName: "winningSubmission",
-        propertyNameID: "winningSubmissionID",
-        dbCollection: Collections.Bounties,
+        select: [
+          "id",
+          "createdAt",
+          "state",
+          "teamID",
+          "testCases",
+          member.playingRole != RoleType.Founder &&
+            member.playingRole != RoleType.BountyHunter &&
+            "repo",
+          "videoDemo",
+        ],
       });
       bounty.submissions = (await include({
         data: bounty.submissions,
         propertyName: "team",
         propertyNameID: "teamID",
         dbCollection: Collections.Teams,
+        select: ["name"],
       })) as Object[];
+
+      bounty = await include({
+        data: bounty,
+        propertyName: "winningSubmission",
+        propertyNameID: "winningSubmissionID",
+        dbCollection: Collections.Submissions,
+      });
 
       return res.send(bounty);
     }
@@ -229,11 +238,9 @@ export function bountiesSetup() {
         approvedByManager: false,
         approvedByValidator: false,
         projectID: bounty.projectID,
-        bountyWinnerID: [],
         founderAddress: member.walletAddress,
         participantsTeamIDs: [],
         submissionIDs: [],
-        testCases: [],
         winningSubmissionID: "",
       };
       await dbBounties.doc(id).set(newBounty);
@@ -320,75 +327,6 @@ export function bountiesSetup() {
       res.status(200).json({ message: "Success" });
     }
   );
-  app.post(
-    "/add-test-cases",
-    authenticateToken,
-    async (req: ProtectedRequest, res: Response) => {
-      const member = await authenticateMember(req, res);
-      const { bountyID, testCases } = validateFields<SetTestCasesPostData>(
-        [{ name: "bountyID" }, { name: "testCases", type: "array" }],
-        req.body,
-        res
-      );
-
-      if (member.playingRole != RoleType.BountyValidator) {
-        return res
-          .status(400)
-          .json({ message: "You are not allowed to add test cases." });
-      }
-      const bountyDoc = await dbBounties.doc(bountyID).get();
-      if (!bountyDoc.exists) {
-        return res.status(400).json({ message: "Bounty not found" });
-      }
-      let bounty = bountyDoc.data() as Bounty;
-
-      if (bounty.stage !== BountyStage.Active) {
-        return res
-          .status(400)
-          .json({ message: "Bounty is not active anymore!" });
-      }
-
-      await dbBounties.doc(bountyID).update({
-        testCases: testCases,
-      });
-      let updatedBounty = (await dbBounties.doc(bountyID).get()).data();
-      updatedBounty = await include({
-        data: updatedBounty,
-        propertyName: "submissions",
-        propertyNameID: "submissionIDs",
-        dbCollection: Collections.Submissions,
-      });
-      updatedBounty.submissions = await include({
-        data: updatedBounty.submissions,
-        propertyName: "testCases",
-        propertyNameID: "testCaseIDs",
-        dbCollection: Collections.TestCases,
-      });
-      const tUpdatedBounty = updatedBounty as Bounty & {
-        submissions: (Submission & {
-          testCases: TestCase[];
-        })[];
-      };
-      tUpdatedBounty.submissions.forEach(async (submission) => {
-        submission.testCases.forEach(async (testCase) => {
-          await dbTestCases.doc(testCase.id).delete();
-        });
-      });
-
-      tUpdatedBounty.submissions.forEach(async (submission) => {
-        bounty.testCases.forEach(async (testCase) => {
-          const id = uuid();
-          await dbTestCases.doc(id).set({
-            id,
-            text: testCase,
-            approved: false,
-            submissionID: submission.id,
-          });
-        });
-      });
-      res.status(200).json({ message: "Success" });
-    }
-  );
   app.get(
     "/get-submission/:id",
     authenticateToken,
@@ -412,10 +350,39 @@ export function bountiesSetup() {
         .where("teamID", "==", teamID)
         .where("bountyID", "==", bountyID)
         .get();
-      console.log(submissionDocs);
+
       const submissions = submissionDocs.docs.map((doc) => doc.data());
 
       res.send(submissions);
+    }
+  );
+  app.get(
+    "/get-submission-by-id/:id",
+    authenticateToken,
+    async (req: ProtectedRequest, res: Response) => {
+      const member = await authenticateMember(req, res);
+      if (!req.params.id) {
+        return res.status(400).json({
+          message: "teamID, bountyID separated by comma is missing",
+        });
+      }
+      const id = req.params.id;
+
+      const submissionDoc = await dbSubmissions.doc(id).get();
+
+      let submission = submissionDoc.data();
+      submission = (await include({
+        data: submission,
+        propertyName: "team",
+        propertyNameID: "teamID",
+        dbCollection: Collections.Teams,
+        select: ["name"],
+      })) as Submission & { name: string };
+
+      if (member.playingRole === RoleType.Founder) {
+        submission.repo = undefined;
+      }
+      res.send(submission);
     }
   );
   app.post(
@@ -481,9 +448,11 @@ export function bountiesSetup() {
         bountyID: bountyID,
         createdAt: new Date(),
         teamID: teamID,
-        testCaseIDs: [],
-        bountyWinnerID: "",
-        winningSubmissionID: "",
+        testCases: [],
+        state: SubmissionState.Pending,
+        reason: "",
+        isWinnerApprovedByFounder: false,
+        isWinnerApprovedByManager: false,
       } as Submission);
 
       await dbTeams.doc(teamID).update({
@@ -493,16 +462,7 @@ export function bountiesSetup() {
         submissionIDs: bounty.submissionIDs.concat(submissionID),
       });
       const idArray: string[] = [];
-      bounty.testCases.forEach(async (testCase) => {
-        const id = uuid();
-        idArray.push(id);
-        await dbTestCases.doc(id).set({
-          id,
-          text: testCase,
-          approved: false,
-          submissionID: id,
-        });
-      });
+
       dbSubmissions.doc(submissionID).update({
         testCaseIDs: idArray,
       });
@@ -510,46 +470,25 @@ export function bountiesSetup() {
       res.status(200).json({ message: "Success" });
     }
   );
-  app.get(
-    "/get-test-cases/:id",
-    authenticateToken,
-    async (req: ProtectedRequest, res: Response) => {
-      const member = await authenticateMember(req, res);
-      if (!req.params.id) {
-        return res.status(400).json({
-          message: "submissionID is missing",
-        });
-      }
-      const submissionID = req.params.id;
 
-      if (
-        member.playingRole != RoleType.BountyValidator &&
-        member.playingRole != RoleType.BountyManager &&
-        member.playingRole != RoleType.Founder
-      ) {
-        return res
-          .status(400)
-          .json({ message: "You are not allowed to view test cases." });
-      }
-
-      const testCaseDocs = await dbTestCases
-        .where("submissionID", "==", submissionID)
-        .get();
-      const testCases = testCaseDocs.docs.map((doc) => doc.data());
-
-      res.send(testCases);
-    }
-  );
   app.post(
     "/approve-test-cases",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const { submissionID, testCases } =
+      const { submissionID, testCases, reason, type } =
         validateFields<ApproveTestCasePostData>(
-          [{ name: "submissionID" }, { name: "testCases", type: "array" }],
+          [
+            { name: "submissionID" },
+            { name: "testCases", type: "array" },
+            { name: "reason" },
+            { name: "type" },
+          ],
           req.body,
           res
         );
+      if (type != "approve" && type != "reject" && type != "approve-winner") {
+        return res.status(400).json({ message: "Invalid type" });
+      }
 
       const member = await authenticateMember(req, res);
 
@@ -558,119 +497,109 @@ export function bountiesSetup() {
           .status(400)
           .json({ message: "You are not allowed to approve test cases." });
       }
+
       const submissionDoc = await dbSubmissions.doc(submissionID).get();
       if (!submissionDoc.exists) {
         return res.status(400).json({ message: "Submission not found" });
       }
-      let submission = submissionDoc.data();
-      submission = await include({
-        data: submission,
+      dbSubmissions.doc(submissionID).update({
+        testCases,
+      });
+      let untypedSubmission = (
+        await dbSubmissions.doc(submissionID).get()
+      ).data();
+      untypedSubmission = await include({
+        data: untypedSubmission,
         propertyName: "bounty",
         propertyNameID: "bountyID",
         dbCollection: Collections.Bounties,
       });
-      const tSubmission = submission as Submission & {
-        bounty: Bounty;
-      };
-
-      const validCases = testCases.filter((testCase) =>
-        tSubmission.bounty.testCases.includes(testCase.text)
-      );
-
-      if (validCases.length != submission.bounty.testCases.length) {
-        return res.status(400).json({ message: "Invalid test cases" });
-      }
-      console.log(testCases);
-      testCases.forEach(async (testCase) => {
-        const exists = (await dbTestCases.doc(testCase.id).get()).exists;
-        if (exists)
-          await dbTestCases.doc(testCase.id).update({
-            approved: testCase.approved,
-          });
-      });
-      res.status(200).json({ message: "Success" });
-    }
-  );
-  app.post(
-    "/validator-select-winning-submission",
-    authenticateToken,
-    async (req: ProtectedRequest, res: Response) => {
-      const { submissionID } = validateFields<SelectWinningSubmissionPostData>(
-        [{ name: "submissionID" }],
-        req.body,
-        res
-      );
-
-      const member = await authenticateMember(req, res);
-
-      if (member.playingRole != RoleType.BountyValidator) {
-        return res.status(400).json({
-          message: "You are not allowed to select the winning submission.",
-        });
-      }
-      const submissionDoc = await dbSubmissions.doc(submissionID).get();
-      if (!submissionDoc.exists) {
-        return res.status(400).json({ message: "Submission not found" });
-      }
-      let submission = submissionDoc.data();
-      submission = await include({
-        data: submission,
-        propertyName: "bounty",
-        propertyNameID: "bountyID",
-        dbCollection: Collections.Bounties,
-      });
-      submission = await include({
-        data: submission,
+      untypedSubmission = await include({
+        data: untypedSubmission,
         propertyName: "team",
         propertyNameID: "teamID",
         dbCollection: Collections.Teams,
       });
+      const submission = untypedSubmission as Submission & {
+        team: Team;
+        bounty: Bounty;
+      };
 
-      if (!submission) {
-        return res.status(400).json({ message: "Submission not found" });
-      }
-      if (submission.bounty.stage !== BountyStage.Active) {
-        return res.status(400).json({ message: "Bounty is not active" });
-      }
-      if (submission.team.creatorAddress !== member.walletAddress) {
-        return res.status(400).json({
-          message: "You are not a authorized to select the winning submission.",
+      if (type === "approve") {
+        if (
+          submission.state === SubmissionState.Pending ||
+          submission.state === SubmissionState.Rejected
+        ) {
+          dbSubmissions.doc(submissionID).update({
+            state: SubmissionState.Approved,
+            testCases,
+            reason,
+          });
+        } else {
+          dbSubmissions.doc(submissionID).update({
+            testCases,
+            reason,
+          });
+        }
+
+        return res.status(200).json({ message: "Success" });
+      } else if (type === "reject") {
+        dbSubmissions.doc(submissionID).update({
+          state: SubmissionState.Rejected,
+          testCases,
+          reason,
         });
-      }
-      if (submission.winningSubmissionID !== "") {
-        const winnerDoc = await dbSubmissions
-          .doc(submission.winningSubmissionID)
-          .get();
-        if (winnerDoc.exists) {
+        if (
+          submission.state === SubmissionState.WinnerAndRewardClaimed ||
+          submission.state === SubmissionState.WinnerConfirmed
+        ) {
+          await dbSubmissions
+            .doc(submission.bounty.winningSubmissionID)
+            .update({
+              isWinnerApprovedByFounder: false,
+              isWinnerApprovedByManager: false,
+              // Set the state as approved, but not a winner
+              state: SubmissionState.Approved,
+              testCases,
+              reason,
+            });
+          await dbBounties.doc(submission.bountyID).update({
+            winningSubmissionID: "",
+          });
+        }
+        return res.status(200).json({ message: "Success" });
+      } else if (type === "approve-winner") {
+        // console.log("yo ", submission.bounty.bountyWinnerID);
+        if (submission.bounty.winningSubmissionID === "") {
+          const id = uuid();
+
+          await dbSubmissions
+            .doc(submissionID)
+            .update({ state: SubmissionState.WinnerPendingConfirmation });
+
+          const team = (
+            await dbTeams.doc(submission.teamID).get()
+          ).data() as Team;
+          await dbTeams.doc(submission.teamID).update({
+            winningSubmissionIDs: team.winningSubmissionIDs.concat(id),
+          });
+          await dbBounties.doc(submission.bountyID).update({
+            winningSubmissionID: submissionID,
+          });
+
+          res.status(200).json({ message: "Success" });
+          return;
+        } else {
           return res.status(400).json({
             message: "You have already selected the winning submission.",
           });
         }
-        const winner = await winnerDoc.data();
-
-        if (winner.length > 0) {
-          return res.status(400).json({
-            message: "You have already selected the winning submission.",
-          });
-        }
-        const id = uuid();
-        const bountyWinner: BountyWinner = {
-          approvedByFounder: false,
-          approvedByManager: false,
-          bountyID: submission.bountyID,
-          confirmed: false,
-          memberAddress: submission.team.creatorAddress,
-          submissionID: submission.id,
-          id,
-        };
-        await dbBountyWinners.doc(id).create(bountyWinner);
-
-        res.status(200).json({ message: "Success" });
       }
     }
   );
+
   app.get(
-    "/get-winner-by-bounty/:id",
+    "/get-bounty-winning-submission/:id",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       if (!req.params.id) {
@@ -684,8 +613,13 @@ export function bountiesSetup() {
         return res.status(400).json({ message: "Bounty not found" });
       }
       const bounty = bountyDoc.data() as Bounty;
-
-      res.send(bounty);
+      if (bounty.winningSubmissionID === "") {
+        return res.send(undefined);
+      }
+      const submission = (
+        await dbSubmissions.doc(bounty.winningSubmissionID).get()
+      ).data();
+      return res.send(submission.data());
     }
   );
   app.post(
@@ -731,31 +665,47 @@ export function bountiesSetup() {
       if (submission.bounty.stage !== BountyStage.Active) {
         return res.status(400).json({ message: "Bounty is not active" });
       }
+      if (submission.state !== SubmissionState.WinnerPendingConfirmation) {
+        return res.status(400).json({
+          message: "Submission is not pending confirmation",
+        });
+      }
       if (approve === false) {
-        await dbBountyWinners.doc(submission.bountyID).delete();
+        await dbSubmissions.doc(submission.bounty.winningSubmissionID).update({
+          isWinnerApprovedByFounder: false,
+          isWinnerApprovedByManager: false,
+          // Set the state as approved, but not a winner
+          state: SubmissionState.Approved,
+        });
+        await dbBounties.doc(submission.bountyID).update({
+          winningSubmissionID: "",
+        });
       } else {
-        let data: BountyWinner | undefined;
         if (member.playingRole === RoleType.Founder) {
-          await dbBountyWinners.doc(submission.bountyID).update({
-            approvedByFounder: true,
-          });
+          await dbSubmissions
+            .doc(submission.bounty.winningSubmissionID)
+            .update({
+              isWinnerApprovedByFounder: true,
+            });
         } else if (member.playingRole === RoleType.BountyManager) {
-          await dbBountyWinners.doc(submission.bountyID).update({
-            approvedByManager: true,
-          });
+          await dbSubmissions
+            .doc(submission.bounty.winningSubmissionID)
+            .update({
+              isWinnerApprovedByManager: true,
+            });
         }
-        if (data.approvedByFounder && data.approvedByManager) {
+        let data = (await dbSubmissions.doc(submissionID).get()).data();
+        if (
+          data.isWinnerApprovedByFounder &&
+          data.isWinnerApprovedByManager &&
+          data.state === SubmissionState.WinnerPendingConfirmation
+        ) {
           // We know its confirmed
-          await dbBountyWinners.doc(submission.bountyID).update({
-            stage: BountyStage.Active,
-            winningSubmission: submission.id,
-          });
-          await dbBountyWinners.doc(submission.bountyID).update({
-            confirmed: true,
-          });
-          await dbProjects.doc(submission.bounty.projectID).update({
-            stage: ProjectStage.Ready,
-          });
+          await dbSubmissions
+            .doc(submission.bounty.winningSubmissionID)
+            .update({
+              state: SubmissionState.WinnerConfirmed,
+            });
         }
       }
       res.status(200).json({ message: "Success" });

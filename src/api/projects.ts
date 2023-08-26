@@ -65,7 +65,7 @@ export function projectsSetup() {
       const project = (
         await dbProjects.doc(req.params.id).get()
       ).data() as Project;
-      console.log(project);
+
       const bountyPromises = project.bountyIDs.map(async (bountyID: string) => {
         const bountySnapshot = await dbBounties.doc(bountyID).get();
         const bounty = bountySnapshot.data();
