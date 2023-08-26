@@ -101,13 +101,22 @@ export function bountiesSetup() {
         dbCollection: Collections.Teams,
         select: ["name"],
       })) as Object[];
-
-      bounty = await include({
-        data: bounty,
-        propertyName: "winningSubmission",
-        propertyNameID: "winningSubmissionID",
-        dbCollection: Collections.Submissions,
-      });
+      if (bounty.winningSubmissionID.length > 0) {
+        bounty = await include({
+          data: bounty,
+          propertyName: "winningSubmission",
+          propertyNameID: "winningSubmissionID",
+          dbCollection: Collections.Submissions,
+        });
+        if (!!bounty.winningSubmission) {
+          bounty.winningSubmission = await include({
+            data: bounty.winningSubmission,
+            propertyName: "team",
+            propertyNameID: "teamID",
+            dbCollection: Collections.Teams,
+          });
+        }
+      }
 
       return res.send(bounty);
     }
@@ -706,6 +715,9 @@ export function bountiesSetup() {
             .update({
               state: SubmissionState.WinnerConfirmed,
             });
+          await dbBounties.doc(submission.bountyID).update({
+            stage: BountyStage.Completed,
+          });
         }
       }
       res.status(200).json({ message: "Success" });

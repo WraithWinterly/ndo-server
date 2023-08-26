@@ -309,7 +309,9 @@ export function membersSetup() {
       }
 
       if (submission.team.creatorAddress !== member.walletAddress) {
-        res.status(400).json({ message: "You are not the team's creator" });
+        return res
+          .status(400)
+          .json({ message: "You are not the team's creator" });
       }
 
       await dbMembers.doc(member.walletAddress).update({
