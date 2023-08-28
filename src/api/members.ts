@@ -121,9 +121,10 @@ export function membersSetup() {
       const memberDocs = await dbMembers
         .orderBy("bountiesWon", "desc")
         .limit(10)
-        .where("isFounder", "==", "false")
+        .where("isFounder", "==", false)
         .get();
       const members = memberDocs.docs.map((doc) => doc.data());
+
       res.send(members);
     }
   );
@@ -134,9 +135,10 @@ export function membersSetup() {
       const memberDocs = await dbMembers
         .orderBy("bountiesWon", "desc")
         .limit(10)
-        .where("isFounder", "==", "true")
+        .where("isFounder", "==", true)
         .get();
       const members = memberDocs.docs.map((doc) => doc.data());
+      console.log(members);
       res.send(members);
     }
   );
