@@ -44,7 +44,7 @@ export function teamsSetup() {
       });
 
       if (!team) {
-        return res.send(404).json({ message: "Team not found" });
+        return res.status(404).json({ message: "Team not found" });
       }
 
       return res.send(team);
@@ -64,7 +64,7 @@ export function teamsSetup() {
         const linkRegex = /^(ftp|http|https):\/\/[^ "]+$/;
 
         if (!linkRegex.test(link))
-          return res.send(400).json({
+          return res.status(400).json({
             message: "Invalid link sent to server",
           });
 
@@ -86,7 +86,7 @@ export function teamsSetup() {
         });
       } catch (e) {
         console.log(e);
-        res.send(400).json(e);
+        res.status(400).json(e);
       }
     }
   );
@@ -102,7 +102,15 @@ export function teamsSetup() {
       const member = await authenticateMember(req, res);
       const team = (await dbTeams.doc(toTeam).get()).data();
       if (!team) {
-        return res.send(404).json({ message: "Team not found" });
+        return res.status(404).json({ message: "Team not found" });
+      }
+      if (team.creatorAddress !== member.walletAddress) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      if (team.memberIDs.includes(member.walletAddress)) {
+        return res
+          .status(400)
+          .json({ message: "Already in the team. No need to invite." });
       }
       const existingInviteDocs = await dbTeamInvites
         .where("toMemberAddress", "==", toAddress)
@@ -155,7 +163,7 @@ export function teamsSetup() {
     async (req: ProtectedRequest, res: Response) => {
       console.log("test");
       if (!req.params.id)
-        return res.send(400).json({
+        return res.status(400).json({
           message: "No team ID provided",
         });
       const inviteDocs = await dbTeamInvites
@@ -191,7 +199,7 @@ async function joinOrRejectTeamInvite(
   try {
     let teamDoc = await dbTeams.doc(toTeamID).get();
     if (!teamDoc.exists) {
-      return res.send(404).json({ message: "Team not found" });
+      return res.status(404).json({ message: "Team not found" });
     }
     let team = teamDoc.data();
     team = await include({
@@ -200,14 +208,19 @@ async function joinOrRejectTeamInvite(
       propertyNameID: "memberIDs",
       dbCollection: Collections.Members,
     });
+
     const invites = await dbTeamInvites
       .where("fromAddress", "==", authMember.walletAddress)
       .where("toTeamID", "==", toTeamID)
       .get();
     const inviteData = invites.docs.map((doc) => doc.data());
+    if (inviteData.length === 0) {
+      return res.status(404).json({ message: "No Invite found" });
+    }
     invites.docs.forEach((doc) => {
       doc.ref.delete();
     });
+
     // Remove their pending invite
     // If they accept, add them to the team
     if (type === "accept") {
@@ -239,6 +252,6 @@ async function joinOrRejectTeamInvite(
     });
   } catch (e) {
     console.error(e);
-    return res.sendStatus(400);
+    return res.status(400).json({ message: "Failed to join team" });
   }
 }

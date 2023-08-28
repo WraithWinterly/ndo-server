@@ -57,7 +57,7 @@ export function projectsSetup() {
     "/get-bounties-for-project/:id",
     async (req: ProtectedRequest, res: Response) => {
       if (!req.params.id) {
-        return res.send(400).json({
+        return res.status(400).json({
           message: "No ID provided",
         });
       }
@@ -139,7 +139,7 @@ export function projectsSetup() {
           res
         );
       if (!projectID || !quotePrice) {
-        return res.sendStatus(400);
+        return res.status(400).json({ message: "Invalid data" });
       }
       await dbProjects.doc(projectID).update({
         quotePrice,

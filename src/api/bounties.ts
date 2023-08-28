@@ -136,9 +136,7 @@ export function bountiesSetup() {
       const team = (await dbTeams.doc(forTeam).get()).data();
 
       if (member.walletAddress != team.creatorAddress)
-        return res
-          .sendStatus(400)
-          .json({ message: "You are not the team owner." });
+        return res.status(400).json({ message: "You are not the team owner." });
 
       const bountyDoc = await dbBounties.doc(bountyID).get();
       if (!bountyDoc.exists) {
@@ -147,7 +145,7 @@ export function bountiesSetup() {
       const bounty = bountyDoc.data() as Bounty;
 
       if (bounty.stage !== BountyStage.Active)
-        return res.sendStatus(400).json({ message: "Bounty not active" });
+        return res.status(400).json({ message: "Bounty not active" });
       await dbBounties.doc(bountyID).update({
         participantsTeamIDs: bounty.participantsTeamIDs.concat(team.id),
       });
