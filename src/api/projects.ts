@@ -131,6 +131,7 @@ export function projectsSetup() {
   app.post(
     "/bountymgr-set-quote-price",
     async (req: ProtectedRequest, res: Response) => {
+      const member = await authenticateMember(req, res);
       const { projectID, quotePrice } =
         validateFields<BountyMgrSetQuotePricePOSTData>(
           [{ name: "projectID" }, { name: "quotePrice", type: "number" }],
@@ -143,6 +144,9 @@ export function projectsSetup() {
       await dbProjects.doc(projectID).update({
         quotePrice,
         stage: ProjectStage.PendingFounderPay,
+      });
+      await dbMembers.doc(member.walletAddress).update({
+        level: member.level + 1,
       });
 
       res.json({

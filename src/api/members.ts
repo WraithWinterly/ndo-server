@@ -314,8 +314,16 @@ export function membersSetup() {
           .json({ message: "You are not the team's creator" });
       }
 
-      await dbMembers.doc(member.walletAddress).update({
-        bountiesWon: member.bountiesWon + 1,
+      submission.team.memberIDs.forEach(async (memberID: string) => {
+        const localMember = (await dbMembers.doc(memberID).get()).data();
+        if (!!member) {
+          await dbMembers.doc(memberID).update({
+            bountiesWon: localMember.bountiesWon + 1,
+          });
+          await dbMembers.doc(memberID).update({
+            level: localMember.level + 1,
+          });
+        }
       });
 
       await dbSubmissions

@@ -3,6 +3,7 @@ import {
   app,
   db,
   dbBounties,
+  dbMembers,
   dbProjects,
   dbSubmissions,
   dbTeams,
@@ -553,6 +554,9 @@ export function bountiesSetup() {
             reason,
           });
         }
+        await dbMembers.doc(member.walletAddress).update({
+          level: member.level + 1,
+        });
 
         return res.status(200).json({ message: "Success" });
       } else if (type === "reject") {
@@ -598,7 +602,9 @@ export function bountiesSetup() {
           await dbBounties.doc(submission.bountyID).update({
             winningSubmissionID: submissionID,
           });
-
+          await dbMembers.doc(member.walletAddress).update({
+            level: member.level + 2,
+          });
           res.status(200).json({ message: "Success" });
           return;
         } else {

@@ -5,6 +5,7 @@ import {
   JoinTeamPOSTData,
   Member,
   Team,
+  TeamInvite,
 } from "../sharedTypes";
 import { type Response } from "express";
 import { InviteToTeam } from "./members";
@@ -103,7 +104,15 @@ export function teamsSetup() {
       if (!team) {
         return res.send(404).json({ message: "Team not found" });
       }
+      const existingInviteDocs = await dbTeamInvites
+        .where("toMemberAddress", "==", toAddress)
+        .where("toTeamID", "==", toTeam)
+        .get();
+      const existingInvites = existingInviteDocs.docs.map((doc) => doc.data());
 
+      if (existingInvites.length > 0) {
+        return res.status(400).json({ message: "Already invited" });
+      }
       const error = await InviteToTeam({
         fromAddress: member.walletAddress,
         fromAddressName: member.firstName,
@@ -130,7 +139,7 @@ export function teamsSetup() {
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       const member = await authenticateMember(req, res);
-      teamInvite(req, res, "accept", member);
+      joinOrRejectTeamInvite(req, res, "accept", member);
     }
   );
   app.post(
@@ -138,7 +147,7 @@ export function teamsSetup() {
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       const member = await authenticateMember(req, res);
-      teamInvite(req, res, "reject", member);
+      joinOrRejectTeamInvite(req, res, "reject", member);
     }
   );
   app.get(
@@ -159,7 +168,7 @@ export function teamsSetup() {
   );
 }
 
-async function teamInvite(
+async function joinOrRejectTeamInvite(
   req: ProtectedRequest,
   res: Response,
   type: "accept" | "reject",
@@ -195,6 +204,7 @@ async function teamInvite(
       .where("fromAddress", "==", authMember.walletAddress)
       .where("toTeamID", "==", toTeamID)
       .get();
+    const inviteData = invites.docs.map((doc) => doc.data());
     invites.docs.forEach((doc) => {
       doc.ref.delete();
     });
@@ -202,13 +212,27 @@ async function teamInvite(
     // If they accept, add them to the team
     if (type === "accept") {
       // Add to team
-      await dbTeamInvites.doc(team.id).update({
-        members: team.members.concat(authMember.walletAddress),
-      });
-      await dbMembers.doc(authMember.walletAddress).update({
-        teamsJoined: Number(memberWithTeams.teams.length),
-      });
+      if (!team.memberIDs.includes(authMember.walletAddress)) {
+        await dbTeams.doc(team.id).update({
+          memberIDs: team.members.concat(authMember.walletAddress),
+        });
+        await dbMembers.doc(authMember.walletAddress).update({
+          teamsJoined: Number(memberWithTeams.teams.length),
+        });
+      }
     }
+
+    const newValueWithoutUsInvites = member.teamIDs.filter((teamID) => {
+      return inviteData
+        .map((invite) => {
+          return invite.toTeamID;
+        })
+        .includes(teamID);
+    });
+
+    await dbMembers
+      .doc(authMember.walletAddress)
+      .update({ teamInviteIDs: newValueWithoutUsInvites });
 
     res.json({
       message: "Success",
