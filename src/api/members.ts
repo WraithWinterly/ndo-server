@@ -277,7 +277,7 @@ export function membersSetup() {
           winners.push(data);
         }
       }
-      console.log(winners);
+      // console.log(winners);
       return res.send(winners);
     }
   );

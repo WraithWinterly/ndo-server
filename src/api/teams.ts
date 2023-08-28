@@ -153,7 +153,7 @@ export function teamsSetup() {
         .where("toTeamID", "==", req.params.id)
         .get();
       const inviteDataArray = inviteDocs.docs.map((doc) => doc.data());
-      console.log("in", inviteDataArray);
+      // console.log("in", inviteDataArray);
       res.send(inviteDataArray);
     }
   );

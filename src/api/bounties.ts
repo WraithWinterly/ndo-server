@@ -361,8 +361,11 @@ export function bountiesSetup() {
         .get();
 
       const submissions = submissionDocs.docs.map((doc) => doc.data());
-
-      res.send(submissions);
+      if (submissions.length === 0) {
+        return res.send(undefined);
+      } else {
+        res.send(submissions);
+      }
     }
   );
   app.get(
