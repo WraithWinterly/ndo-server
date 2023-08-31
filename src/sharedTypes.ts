@@ -174,6 +174,7 @@ export interface Bounty {
   id: string;
   title: string;
   description: string;
+  createdAt: Date;
   startDate: Date;
   types: BountyType[];
   deadline: Date;

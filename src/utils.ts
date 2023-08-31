@@ -202,3 +202,16 @@ export async function include(options: {
 
   return dataAny;
 }
+
+export function fromFireDate(timestamp: any | undefined) {
+  // console.log('timestamp: ', timestamp);
+  if (timestamp == null) {
+    return undefined;
+  }
+  const jsTimestamp = new Date(
+    timestamp["_seconds"] * 1000 + timestamp["_nanoseconds"] / 1000000
+  );
+  // console.log('js time stamp ', jsTimestamp.getTime());
+  return jsTimestamp;
+  // return new Date();
+}

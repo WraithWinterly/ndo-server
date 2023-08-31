@@ -35,6 +35,7 @@ import {
   authenticateMember as authenticateMember,
   validateFields,
   include,
+  fromFireDate,
 } from "../utils";
 
 export function bountiesSetup() {
@@ -146,6 +147,12 @@ export function bountiesSetup() {
 
       if (bounty.stage !== BountyStage.Active)
         return res.status(400).json({ message: "Bounty not active" });
+
+      if (
+        (fromFireDate(bounty.startDate)?.getTime() || 0) > new Date().getTime()
+      )
+        return res.status(400).json({ message: "Bounty has not started yet" });
+
       await dbBounties.doc(bountyID).update({
         participantsTeamIDs: bounty.participantsTeamIDs.concat(team.id),
       });
@@ -222,24 +229,31 @@ export function bountiesSetup() {
       if (reward <= 0) {
         return res.status(400).json({ message: "Invalid reward amount" });
       }
+      console.log(bounty?.id);
       const withoutMe = bounties?.filter((b) => b.id !== bounty?.id);
       withoutMe?.forEach((bounty) => {
         reward -= bounty.reward;
       });
+      console.log(withoutMe.length, reward);
       if (bounty.reward > reward) {
         return res.status(400).json({ message: "Reward amount is too high" });
       }
       const id = bounty.id ? bounty.id : uuid();
+      const bountyStartDate = new Date(bounty.startDate);
+      bountyStartDate.setUTCHours(0, 0, 0, 0);
+      const bountyDeadline = new Date(bounty.deadline);
+      bountyDeadline.setUTCHours(0, 0, 0, 0);
 
       const newBounty: Bounty = {
         id,
         title: bounty.title,
         description: bounty.description,
         aboutProject: bounty.aboutProject,
+        createdAt: new Date(),
         reward: bounty.reward,
-        deadline: new Date(bounty.deadline),
+        deadline: bountyDeadline,
         headerSections: bounty.headerSections,
-        startDate: new Date(bounty.startDate),
+        startDate: bountyStartDate,
         types: bounty.types,
         stage: draft ? BountyStage.Draft : BountyStage.PendingApproval,
         approvedByFounder: false,
@@ -255,7 +269,7 @@ export function bountiesSetup() {
       const proj = (
         await dbProjects.doc(bounty.projectID).get()
       ).data() as Project;
-      if (draft && !proj.bountyIDs.includes(id)) {
+      if (!proj.bountyIDs.includes(id)) {
         await dbProjects.doc(bounty.projectID).update({
           bountyIDs: proj.bountyIDs.concat(id),
         });
