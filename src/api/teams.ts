@@ -85,7 +85,7 @@ export function teamsSetup() {
           message: "Success",
         });
       } catch (e) {
-        console.log(e);
+        console.error(e);
         res.status(400).json(e);
       }
     }
@@ -161,7 +161,6 @@ export function teamsSetup() {
   app.get(
     "/get-team-pending-invites/:id",
     async (req: ProtectedRequest, res: Response) => {
-      console.log("test");
       if (!req.params.id)
         return res.status(400).json({
           message: "No team ID provided",
@@ -170,7 +169,7 @@ export function teamsSetup() {
         .where("toTeamID", "==", req.params.id)
         .get();
       const inviteDataArray = inviteDocs.docs.map((doc) => doc.data());
-      // console.log("in", inviteDataArray);
+
       res.send(inviteDataArray);
     }
   );
@@ -213,7 +212,7 @@ async function joinOrRejectTeamInvite(
       .where("fromAddress", "==", authMember.walletAddress)
       .where("toTeamID", "==", toTeamID)
       .get();
-    const inviteData = invites.docs.map((doc) => doc.data());
+    const inviteData = invites.docs.map((doc) => doc.data()) as TeamInvite[];
     if (inviteData.length === 0) {
       return res.status(404).json({ message: "No Invite found" });
     }
@@ -234,6 +233,17 @@ async function joinOrRejectTeamInvite(
         });
       }
     }
+
+    // Remove team invite ID after joining
+    await dbMembers.doc(authMember.walletAddress).update({
+      teamInviteIDs: authMember.teamInviteIDs.filter((invite) => {
+        return inviteData
+          .map((invite) => {
+            return invite.id;
+          })
+          .includes(invite);
+      }),
+    });
 
     const newValueWithoutUsInvites = member.teamIDs.filter((teamID) => {
       return inviteData

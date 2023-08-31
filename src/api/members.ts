@@ -77,7 +77,6 @@ export function membersSetup() {
     "/get-members-by-wallet-addresses",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      // console.log("a: ");
       const addresses = req.body as string[];
 
       if (!addresses) {
@@ -138,7 +137,7 @@ export function membersSetup() {
         .where("isFounder", "==", true)
         .get();
       const members = memberDocs.docs.map((doc) => doc.data());
-      console.log(members);
+
       res.send(members);
     }
   );
@@ -190,7 +189,6 @@ export function membersSetup() {
 
       await dbMembers.doc(req.walletAddress).set(newMember);
 
-      console.log("Member created");
       res.json({
         message: "Success",
       });
@@ -242,7 +240,6 @@ export function membersSetup() {
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       let member = (await authenticateMember(req, res)) as any;
-      // console.log(user);
       member = (await include({
         data: member,
         propertyName: "teams",
@@ -279,7 +276,7 @@ export function membersSetup() {
           winners.push(data);
         }
       }
-      // console.log(winners);
+
       return res.send(winners);
     }
   );

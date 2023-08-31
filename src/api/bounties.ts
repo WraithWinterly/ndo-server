@@ -229,12 +229,12 @@ export function bountiesSetup() {
       if (reward <= 0) {
         return res.status(400).json({ message: "Invalid reward amount" });
       }
-      console.log(bounty?.id);
+
       const withoutMe = bounties?.filter((b) => b.id !== bounty?.id);
       withoutMe?.forEach((bounty) => {
         reward -= bounty.reward;
       });
-      console.log(withoutMe.length, reward);
+
       if (bounty.reward > reward) {
         return res.status(400).json({ message: "Reward amount is too high" });
       }
@@ -597,7 +597,6 @@ export function bountiesSetup() {
         }
         return res.status(200).json({ message: "Success" });
       } else if (type === "approve-winner") {
-        // console.log("yo ", submission.bounty.bountyWinnerID);
         if (submission.bounty.winningSubmissionID === "") {
           const id = uuid();
 

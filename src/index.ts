@@ -6,7 +6,6 @@ import { bountiesSetup } from "./api/bounties";
 import { membersSetup } from "./api/members";
 import { teamsSetup } from "./api/teams";
 import { projectsSetup } from "./api/projects";
-import seedDatabaseFirestore from "./seed";
 
 import bs58 from "bs58";
 import nacl from "tweetnacl";
@@ -124,13 +123,6 @@ app.post("/authorize", (req: Request, res: Response) => {
   } else {
     return res.status(401).json({ message: "unauthorized" });
   }
-});
-
-app.get("/seed", async (req: Request, res: Response) => {
-  // console.log("[i] Starting seed");
-  await seedDatabaseFirestore();
-  // console.log("[i] Seeding complete");
-  res.json({ message: "Seeding Complete" });
 });
 
 app.get("/alive", (req: Request, res: Response) => {
