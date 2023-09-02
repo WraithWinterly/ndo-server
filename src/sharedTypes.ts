@@ -230,7 +230,6 @@ export interface Member {
   teamsJoined: number;
   membersInvited: number;
   teamInviteIDs: string[];
-  createdTeamIDs: string[];
   teamIDs: string[];
 }
 

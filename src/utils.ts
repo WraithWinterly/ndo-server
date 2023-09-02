@@ -189,7 +189,16 @@ export async function include(options: {
         item[propertyName] = result || undefined;
       }
     } else if (Array.isArray(ids)) {
-      const results: Object[] = await Promise.all(ids.map(fetchDocument));
+      const sanitizeIDs = ids.map((id) => (typeof id === "string" ? id : null));
+
+      if (!sanitizeIDs.every((id) => typeof id === "string")) {
+        console.warn(
+          `ID Array is polluted! ${propertyNameID} @ ${dbCollection}`
+        );
+      }
+      const results: Object[] = await Promise.all(
+        sanitizeIDs.map(fetchDocument)
+      );
       item[propertyName] = results.filter((result) => !!result);
     }
   }

@@ -102,14 +102,18 @@ export function membersSetup() {
         return;
       }
       const members: Array<Member> = [];
-      addresses.forEach(async (address) => {
+      const fetchPromises = addresses.map(async (address) => {
         const foundDoc = await dbMembers.doc(address).get();
-        if (!foundDoc.exists) {
-          return;
+
+        if (foundDoc.exists) {
+          const found = foundDoc.data();
+          members.push(found as Member);
         }
-        const found = foundDoc.data();
-        members.push(found as Member);
       });
+
+      await Promise.all(fetchPromises); // Wait for all asynchronous operations to complete
+
+      console.log(members);
       return res.send(members);
     }
   );
@@ -179,7 +183,6 @@ export function membersSetup() {
         teamsJoined: 0,
         walletAddress: req.walletAddress,
         teamInviteIDs: [],
-        createdTeamIDs: [],
         teamIDs: [],
       };
       const existingUser = await dbMembers.doc(req.walletAddress).get();
@@ -356,12 +359,7 @@ export async function InviteToTeam(options: {
   fromAddress: string;
   toMemberAddress: string;
 }) {
-  const {
-    teamID,
-    fromAddressName: inviterName,
-    fromAddress: inviterAddress,
-    toMemberAddress,
-  } = options;
+  const { teamID, fromAddressName, fromAddress, toMemberAddress } = options;
   const team = (await dbTeams.doc(teamID).get()).data();
   // Check if user is already invited
 
@@ -375,8 +373,8 @@ export async function InviteToTeam(options: {
   const id = uuid();
   await dbTeamInvites.doc(id).create({
     id,
-    fromAddress: inviterAddress,
-    fromName: inviterName,
+    fromAddress: fromAddress,
+    fromName: fromAddressName,
     toTeamID: teamID,
     toTeamName: team.name,
     toMemberAddress,
@@ -387,8 +385,8 @@ export async function InviteToTeam(options: {
     teamInviteIDs: toMember.teamInviteIDs.concat([id]),
   });
 
-  const member = (await dbMembers.doc(inviterAddress).get()).data();
-  await dbMembers.doc(toMemberAddress).update({
+  const member = (await dbMembers.doc(fromAddress).get()).data();
+  await dbMembers.doc(fromAddress).update({
     membersInvited: member.membersInvited + 1,
   });
 }

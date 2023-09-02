@@ -23,7 +23,7 @@ export function teamsSetup() {
     "/get-teams",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      let teams = (await dbTeams.get()).docs.map((doc) => doc.data()).reverse();
+      let teams = (await dbTeams.get()).docs.map((doc) => doc.data());
       res.send(teams);
     }
   );
@@ -67,9 +67,9 @@ export function teamsSetup() {
           return res.status(400).json({
             message: "Invalid link sent to server",
           });
-
+        const id = uuid();
         const createdTeam: Team = {
-          id: uuid(),
+          id,
           name,
           description,
           link: link,
@@ -80,6 +80,11 @@ export function teamsSetup() {
           winningSubmissionIDs: [],
         };
         dbTeams.doc(createdTeam.id).set(createdTeam);
+
+        await dbMembers.doc(member.walletAddress).update({
+          teamsJoined: member.teamsJoined + 1,
+          teamIDs: member.teamIDs.concat(id),
+        });
 
         res.json({
           message: "Success",
@@ -107,7 +112,8 @@ export function teamsSetup() {
       if (team.creatorAddress !== member.walletAddress) {
         return res.status(403).json({ message: "Not authorized" });
       }
-      if (team.memberIDs.includes(member.walletAddress)) {
+      console.log(team.memberIDs);
+      if (team.memberIDs.includes(toAddress)) {
         return res
           .status(400)
           .json({ message: "Already in the team. No need to invite." });
@@ -146,16 +152,14 @@ export function teamsSetup() {
     "/join-team-from-invite",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const member = await authenticateMember(req, res);
-      joinOrRejectTeamInvite(req, res, "accept", member);
+      joinOrRejectTeamInvite(req, res, "accept");
     }
   );
   app.post(
     "/deny-team-from-invite",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const member = await authenticateMember(req, res);
-      joinOrRejectTeamInvite(req, res, "reject", member);
+      joinOrRejectTeamInvite(req, res, "reject");
     }
   );
   app.get(
@@ -178,18 +182,18 @@ export function teamsSetup() {
 async function joinOrRejectTeamInvite(
   req: ProtectedRequest,
   res: Response,
-  type: "accept" | "reject",
-  member: Member
+  type: "accept" | "reject"
 ) {
+  const authMember = await authenticateMember(req, res);
   const { toTeamID } = validateFields<JoinTeamPOSTData>(
     [{ name: "toTeamID" }],
     req.body,
     res
   );
-  const authMember = await authenticateMember(req, res);
+
   // Ensure correct body data
   const memberWithTeams = (await include({
-    data: member,
+    data: authMember,
     propertyName: "teams",
     propertyNameID: "teamIDs",
     dbCollection: Collections.Teams,
@@ -209,7 +213,7 @@ async function joinOrRejectTeamInvite(
     });
 
     const invites = await dbTeamInvites
-      .where("fromAddress", "==", authMember.walletAddress)
+      .where("toMemberAddress", "==", authMember.walletAddress)
       .where("toTeamID", "==", toTeamID)
       .get();
     const inviteData = invites.docs.map((doc) => doc.data()) as TeamInvite[];
@@ -226,10 +230,11 @@ async function joinOrRejectTeamInvite(
       // Add to team
       if (!team.memberIDs.includes(authMember.walletAddress)) {
         await dbTeams.doc(team.id).update({
-          memberIDs: team.members.concat(authMember.walletAddress),
+          memberIDs: team.memberIDs.concat(authMember.walletAddress),
         });
         await dbMembers.doc(authMember.walletAddress).update({
-          teamsJoined: Number(memberWithTeams.teams.length),
+          teamsJoined: authMember.teamsJoined + 1,
+          teamIds: memberWithTeams.teamIDs.concat(team.id),
         });
       }
     }
@@ -245,7 +250,7 @@ async function joinOrRejectTeamInvite(
       }),
     });
 
-    const newValueWithoutUsInvites = member.teamIDs.filter((teamID) => {
+    const newValueWithoutUsInvites = authMember.teamIDs.filter((teamID) => {
       return inviteData
         .map((invite) => {
           return invite.toTeamID;
