@@ -321,8 +321,6 @@ export function membersSetup() {
         if (!!member) {
           await dbMembers.doc(memberID).update({
             bountiesWon: localMember.bountiesWon + 1,
-          });
-          await dbMembers.doc(memberID).update({
             level: localMember.level + 1,
           });
         }
