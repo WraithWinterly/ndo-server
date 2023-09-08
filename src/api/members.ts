@@ -208,6 +208,8 @@ export function membersSetup() {
         walletAddress: req.walletAddress,
         teamInviteIDs: [],
         teamIDs: [],
+        admin: false,
+        adminec: false,
       };
       const existingUser = await dbMembers.doc(req.walletAddress).get();
       if (existingUser.exists) {

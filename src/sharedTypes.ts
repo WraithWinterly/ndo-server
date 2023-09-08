@@ -230,6 +230,8 @@ export interface Member {
   membersInvited: number;
   teamInviteIDs: string[];
   teamIDs: string[];
+  admin: boolean;
+  adminec: boolean;
 }
 
 export interface TeamInvite {
