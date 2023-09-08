@@ -187,7 +187,6 @@ export interface Bounty {
   approvedByManager: boolean;
   approvedByValidator: boolean;
   reward: number;
-  founderAddress: string;
   projectID: string;
   winningSubmissionID: string;
 }

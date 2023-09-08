@@ -6,6 +6,7 @@ import {
   Project,
   ProjectStage,
   Member,
+  RoleType,
 } from "../sharedTypes";
 import { Collections, app, dbBounties, dbMembers, dbProjects } from "../";
 
@@ -24,9 +25,27 @@ export function projectsSetup() {
     "/get-projects",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const data = (await dbProjects.get()).docs
-        .map((doc) => doc.data())
-        ?.reverse();
+      const member = await authenticateMember(req, res);
+
+      let data: Array<unknown> = [];
+
+      if (member.playingRole === RoleType.Founder) {
+        data = (
+          await dbProjects
+            .where("founderWalletAddress", "==", member.walletAddress)
+            .get()
+        ).docs
+          .map((doc) => doc.data())
+          ?.reverse();
+      } else if (
+        member.playingRole === RoleType.BountyDesigner ||
+        member.playingRole === RoleType.BountyManager ||
+        member.playingRole === RoleType.BountyValidator
+      ) {
+        data = (await dbProjects.get()).docs
+          .map((doc) => doc.data())
+          ?.reverse();
+      }
 
       return res.send(data);
     }
@@ -110,6 +129,7 @@ export function projectsSetup() {
       }
       const founder = founderDoc.data() as Member;
       const id = uuid();
+
       const project: Project = {
         id,
         title,
@@ -122,6 +142,7 @@ export function projectsSetup() {
         bountyIDs: [],
         createdAt: new Date(),
       };
+
       await dbProjects.doc(id).set(project);
       return res.json({
         message: "Success",

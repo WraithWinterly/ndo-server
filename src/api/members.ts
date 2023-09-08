@@ -41,8 +41,13 @@ export function membersSetup() {
           message: "No ID provided",
         });
       }
-      const member = (await dbMembers.doc(req.params.id).get()).data();
-
+      let member = (await dbMembers.doc(req.params.id).get()).data() as Member;
+      // Obfuscate email
+      member = {
+        ...member,
+        email: "",
+        teamIDs: [],
+      };
       if (!member) {
         res.status(404).json({
           message: "Member not found",
@@ -106,7 +111,12 @@ export function membersSetup() {
         const foundDoc = await dbMembers.doc(address).get();
 
         if (foundDoc.exists) {
-          const found = foundDoc.data();
+          let found = foundDoc.data() as Member;
+          found = {
+            ...found,
+            email: "",
+            teamIDs: [],
+          };
           members.push(found as Member);
         }
       });
@@ -122,11 +132,18 @@ export function membersSetup() {
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       const memberDocs = await dbMembers
-        .orderBy("bountiesWon", "desc")
-        .limit(10)
+        .orderBy("level", "desc")
+        .limit(100)
         .where("isFounder", "==", false)
         .get();
-      const members = memberDocs.docs.map((doc) => doc.data());
+      let members = memberDocs.docs.map((doc) => doc.data()) as Member[];
+      members = members.map((member) => {
+        return {
+          ...member,
+          email: "",
+          teamIDs: [],
+        };
+      });
 
       res.send(members);
     }
@@ -136,11 +153,18 @@ export function membersSetup() {
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       const memberDocs = await dbMembers
-        .orderBy("bountiesWon", "desc")
-        .limit(10)
+        .orderBy("level", "desc")
+        .limit(100)
         .where("isFounder", "==", true)
         .get();
-      const members = memberDocs.docs.map((doc) => doc.data());
+      let members = memberDocs.docs.map((doc) => doc.data()) as Member[];
+      members = members.map((member) => {
+        return {
+          ...member,
+          email: "",
+          teamIDs: [],
+        };
+      });
 
       res.send(members);
     }

@@ -72,10 +72,10 @@ export function bountiesSetup() {
         propertyNameID: "projectID",
         dbCollection: Collections.Projects,
       });
-      bounty = await include({
-        data: bounty,
+      bounty.project = await include({
+        data: bounty.project,
         propertyName: "founder",
-        propertyNameID: "founderAddress",
+        propertyNameID: "founderWalletAddress",
         dbCollection: Collections.Members,
       });
 
@@ -260,7 +260,6 @@ export function bountiesSetup() {
         approvedByManager: false,
         approvedByValidator: false,
         projectID: bounty.projectID,
-        founderAddress: member.walletAddress,
         participantsTeamIDs: [],
         submissionIDs: [],
         winningSubmissionID: "",
