@@ -234,7 +234,7 @@ async function joinOrRejectTeamInvite(
         });
         await dbMembers.doc(authMember.walletAddress).update({
           teamsJoined: authMember.teamsJoined + 1,
-          teamIds: memberWithTeams.teamIDs.concat(team.id),
+          teamIDs: memberWithTeams.teamIDs.concat(team.id),
         });
       }
     }

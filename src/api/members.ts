@@ -43,11 +43,14 @@ export function membersSetup() {
       }
       let member = (await dbMembers.doc(req.params.id).get()).data() as Member;
       // Obfuscate email
-      member = {
-        ...member,
-        email: "",
-        teamIDs: [],
-      };
+      if (!!member) {
+        member = {
+          ...member,
+          email: "",
+          teamIDs: [],
+        };
+      }
+
       if (!member) {
         res.status(404).json({
           message: "Member not found",
@@ -55,6 +58,29 @@ export function membersSetup() {
         return;
       }
       res.send(member);
+    }
+  );
+  app.get(
+    "/get-members-by-username/:id",
+    authenticateToken,
+    async (req: ProtectedRequest, res: Response) => {
+      if (!req.params.id) {
+        return res.status(400).json({
+          message: "No ID provided",
+        });
+      }
+
+      const username = req.params.id.toLowerCase() as string;
+
+      let members = (
+        await dbMembers
+          .orderBy("username", "asc")
+          .startAt(username)
+          .endAt(username + "\uf8ff")
+          .get()
+      ).docs.map((doc) => doc.data());
+      console.log(members);
+      res.send(members);
     }
   );
   app.get(
@@ -123,7 +149,7 @@ export function membersSetup() {
 
       await Promise.all(fetchPromises); // Wait for all asynchronous operations to complete
 
-      console.log(members);
+      // console.log(members);
       return res.send(members);
     }
   );
@@ -193,10 +219,10 @@ export function membersSetup() {
       }
 
       const newMember: Member = {
-        username,
-        firstName,
-        lastName,
-        email,
+        username: username.toLowerCase().replace(/[^a-z0-9]/g, ""),
+        firstName: firstName.replace(/[^a-zA-Z]/g, ""),
+        lastName: lastName.replace(/[^a-zA-Z]/g, ""),
+        email: email.toLowerCase(),
         bio: "",
         bountiesWon: 0,
         isFounder: false,
