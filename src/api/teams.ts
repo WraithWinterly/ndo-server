@@ -23,7 +23,17 @@ export function teamsSetup() {
     "/get-teams",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      let teams = (await dbTeams.get()).docs.map((doc) => doc.data());
+      const member = await authenticateMember(req, res);
+      let teams: Array<Team>;
+      if (member.admin && member.adminec) {
+        teams = (await dbTeams.get()).docs.map((doc) =>
+          doc.data()
+        ) as Array<Team>;
+      } else {
+        teams = (
+          await dbTeams.where("memberIDs", "array-contains", member.id).get()
+        ).docs.map((doc) => doc.data()) as Array<Team>;
+      }
       res.send(teams);
     }
   );
