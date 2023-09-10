@@ -33,6 +33,16 @@ import {
 import { v4 as uuid } from "uuid";
 export function membersSetup() {
   app.get(
+    "/verify-auth",
+    authenticateToken,
+    (req: ProtectedRequest, res: Response) => {
+      if (req.walletAddress) {
+        return res.send({ verified: true });
+      }
+      return res.send({ verified: false });
+    }
+  );
+  app.get(
     "/get-member-by-wallet-address/:id",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {

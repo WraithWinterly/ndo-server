@@ -9,7 +9,7 @@ export interface ProtectedRequest extends Request {
 
 export function generateAccessToken(walletAddress: string) {
   return jwt.sign({ id: walletAddress }, process.env.ACCESS_TOKEN_SECRET, {
-    expiresIn: "1d",
+    expiresIn: "1w",
   });
 }
 
@@ -25,10 +25,12 @@ export function authenticateToken(
 
   const token = authHeader && authHeader.split(" ")[1];
 
-  if (token == null)
-    return res.status(401).json({
-      message: "No token provided",
-    });
+  // Verify token
+  let parts = token.split(".");
+
+  if (parts.length !== 3) {
+    return res.status(403).json({ message: `Failed to verify token` });
+  }
 
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, walletAddress) => {
     if (err) {
