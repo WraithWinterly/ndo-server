@@ -53,7 +53,7 @@ export function membersSetup() {
 
       if (!member) {
         res.status(404).json({
-          message: "Member not found",
+          message: "You are not authenticated with the server.",
         });
         return;
       }
@@ -97,7 +97,7 @@ export function membersSetup() {
 
       if (!member) {
         res.status(404).json({
-          message: "Member not found",
+          message: "You are not authenticated with the server.",
         });
         return;
       }
@@ -128,7 +128,7 @@ export function membersSetup() {
 
       if (!dbMembers) {
         res.status(404).json({
-          message: "Member not found",
+          message: "You are not authenticated with the server.",
         });
         return;
       }
@@ -231,7 +231,7 @@ export function membersSetup() {
         playingRole: RoleType.BountyHunter,
         roles: [RoleType.BountyHunter],
         teamsJoined: 0,
-        walletAddress: req.walletAddress,
+        id: req.walletAddress,
         teamInviteIDs: [],
         teamIDs: [],
         admin: false,
@@ -265,18 +265,23 @@ export function membersSetup() {
       }
 
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
 
       if (!member.roles.includes(role)) {
         return res
           .status(400)
           .json({ message: "Role is not allowed for you!" });
       }
-      const updatedMember = await dbMembers.doc(member.walletAddress).update({
+      const updatedMember = await dbMembers.doc(member.id).update({
         playingRole: role,
       });
 
       if (role === RoleType.Founder) {
-        await dbMembers.doc(member.walletAddress).update({
+        await dbMembers.doc(member.id).update({
           isFounder: true,
         });
       }
@@ -286,7 +291,9 @@ export function membersSetup() {
           message: "Success",
         });
       } else {
-        return res.status(400).json({ message: "Member not found" });
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
       }
     }
   );
@@ -346,6 +353,11 @@ export function membersSetup() {
       );
 
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
 
       const submissionDoc = await dbSubmissions.doc(submissionID).get();
       if (!submissionDoc.exists) {
@@ -362,7 +374,7 @@ export function membersSetup() {
         return res.status(400).json({ message: "Submission not confirmed" });
       }
 
-      if (submission.team.creatorAddress !== member.walletAddress) {
+      if (submission.team.creatorID !== member.id) {
         return res
           .status(400)
           .json({ message: "You are not the team's creator" });
@@ -403,19 +415,19 @@ export function membersSetup() {
 }
 
 export async function InviteToTeam(options: {
-  teamID: string;
-  teamName: string;
-  fromAddressName: string;
-  fromAddress: string;
-  toMemberAddress: string;
+  toTeamID: string;
+  toTeamName: string;
+  fromMemberName: string;
+  fromMemberID: string;
+  toMemberID: string;
 }) {
-  const { teamID, fromAddressName, fromAddress, toMemberAddress } = options;
-  const team = (await dbTeams.doc(teamID).get()).data();
+  const { toTeamID, fromMemberName, fromMemberID, toMemberID } = options;
+  const team = (await dbTeams.doc(toTeamID).get()).data();
   // Check if user is already invited
 
   const existingInvite = await dbTeamInvites
-    .where("memberAddress", "==", toMemberAddress)
-    .where("toTeamID", "==", teamID)
+    .where("toMemberID", "==", toMemberID)
+    .where("toTeamID", "==", toTeamID)
     .get();
   if (existingInvite.size > 0) {
     return "Already invited";
@@ -423,20 +435,20 @@ export async function InviteToTeam(options: {
   const id = uuid();
   await dbTeamInvites.doc(id).create({
     id,
-    fromAddress: fromAddress,
-    fromName: fromAddressName,
-    toTeamID: teamID,
+    fromMemberID: fromMemberID,
+    fromMemberName: fromMemberName,
+    toTeamID: toTeamID,
     toTeamName: team.name,
-    toMemberAddress,
+    toMemberID: toMemberID,
   } as TeamInvite);
 
-  const toMember = (await dbMembers.doc(toMemberAddress).get()).data();
-  await dbMembers.doc(toMemberAddress).update({
+  const toMember = (await dbMembers.doc(toMemberID).get()).data();
+  await dbMembers.doc(toMemberID).update({
     teamInviteIDs: toMember.teamInviteIDs.concat([id]),
   });
 
-  const member = (await dbMembers.doc(fromAddress).get()).data();
-  await dbMembers.doc(fromAddress).update({
+  const member = (await dbMembers.doc(fromMemberID).get()).data();
+  await dbMembers.doc(fromMemberID).update({
     membersInvited: member.membersInvited + 1,
   });
 }

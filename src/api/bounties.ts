@@ -63,6 +63,11 @@ export function bountiesSetup() {
       // If it is not provided, return 400.
       if (!req.params.id) return res.status(400).json({ message: "No ID" });
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
       // Find the bounty from the database
 
       let bounty = (await dbBounties.doc(req.params.id).get()).data();
@@ -75,7 +80,7 @@ export function bountiesSetup() {
       bounty.project = await include({
         data: bounty.project,
         propertyName: "founder",
-        propertyNameID: "founderWalletAddress",
+        propertyNameID: "founderID",
         dbCollection: Collections.Members,
       });
 
@@ -128,6 +133,11 @@ export function bountiesSetup() {
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
       const { forTeam, bountyID } = validateFields<StartBountyPOSTData>(
         [{ name: "forTeam" }, { name: "bountyID" }],
         req.body,
@@ -136,7 +146,7 @@ export function bountiesSetup() {
 
       const team = (await dbTeams.doc(forTeam).get()).data();
 
-      if (member.walletAddress != team.creatorAddress)
+      if (member.id != team.creatorID)
         return res.status(400).json({ message: "You are not the team owner." });
 
       const bountyDoc = await dbBounties.doc(bountyID).get();
@@ -154,7 +164,7 @@ export function bountiesSetup() {
         return res.status(400).json({ message: "Bounty has not started yet" });
 
       await dbBounties.doc(bountyID).update({
-        participantsTeamIDs: bounty.participantsTeamIDs.concat(team.id),
+        participantTeamIDs: bounty.participantTeamIDs.concat(team.id),
       });
 
       res.status(200).json({
@@ -167,6 +177,11 @@ export function bountiesSetup() {
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
       const { bounty, draft } = validateFields<CreateBountyPostData>(
         [
           { name: "bounty", type: "nocheck" },
@@ -260,7 +275,7 @@ export function bountiesSetup() {
         approvedByManager: false,
         approvedByValidator: false,
         projectID: bounty.projectID,
-        participantsTeamIDs: [],
+        participantTeamIDs: [],
         submissionIDs: [],
         winningSubmissionID: "",
       };
@@ -283,6 +298,11 @@ export function bountiesSetup() {
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
       const { approve, bountyID } = validateFields<SetApproveBountyPostData>(
         [{ name: "approve", type: "boolean" }, { name: "bountyID" }],
         req.body,
@@ -353,6 +373,11 @@ export function bountiesSetup() {
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
       if (!req.params.id) {
         return res.status(400).json({
           message: "teamID, bountyID separated by comma is missing",
@@ -385,6 +410,11 @@ export function bountiesSetup() {
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
       if (!req.params.id) {
         return res.status(400).json({
           message: "teamID, bountyID separated by comma is missing",
@@ -425,6 +455,11 @@ export function bountiesSetup() {
           res
         );
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
 
       const teamDoc = await dbTeams.doc(teamID).get();
 
@@ -433,7 +468,7 @@ export function bountiesSetup() {
       }
       const team = teamDoc.data() as Team;
 
-      if (team.creatorAddress !== member.walletAddress) {
+      if (team.creatorID !== member.id) {
         return res.status(400).json({
           message:
             "You are not a authorized to submit deliverables for the team",
@@ -485,11 +520,11 @@ export function bountiesSetup() {
       await dbBounties.doc(bountyID).update({
         submissionIDs: bounty.submissionIDs.concat(submissionID),
       });
-      const idArray: string[] = [];
+      // const idArray: string[] = [];
 
-      dbSubmissions.doc(submissionID).update({
-        testCaseIDs: idArray,
-      });
+      // dbSubmissions.doc(submissionID).update({
+      //   testCaseIDs: idArray,
+      // });
 
       res.status(200).json({ message: "Success" });
     }
@@ -515,6 +550,11 @@ export function bountiesSetup() {
       }
 
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
 
       if (member.playingRole != RoleType.BountyValidator) {
         return res
@@ -565,7 +605,7 @@ export function bountiesSetup() {
             reason,
           });
         }
-        await dbMembers.doc(member.walletAddress).update({
+        await dbMembers.doc(member.id).update({
           level: member.level + 1,
         });
 
@@ -606,13 +646,11 @@ export function bountiesSetup() {
           const team = (
             await dbTeams.doc(submission.teamID).get()
           ).data() as Team;
-          await dbTeams.doc(submission.teamID).update({
-            winningSubmissionIDs: team.winningSubmissionIDs.concat(id),
-          });
+
           await dbBounties.doc(submission.bountyID).update({
             winningSubmissionID: submissionID,
           });
-          await dbMembers.doc(member.walletAddress).update({
+          await dbMembers.doc(member.id).update({
             level: member.level + 2,
           });
           res.status(200).json({ message: "Success" });
@@ -661,6 +699,11 @@ export function bountiesSetup() {
           res
         );
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
 
       if (
         member.playingRole != RoleType.BountyValidator &&

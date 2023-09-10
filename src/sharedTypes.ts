@@ -104,8 +104,8 @@ export type CreateTeamPOSTData = {
 };
 
 export type InviteToTeamPOSTData = {
-  toAddress: string;
-  toTeam: string;
+  toMemberID: string;
+  toTeamID: string;
 };
 export type JoinTeamPOSTData = {
   toTeamID: string;
@@ -152,9 +152,8 @@ export interface Team {
   createdAt: Date;
   link: string;
   memberIDs: string[];
-  creatorAddress: string;
+  creatorID: string;
   submissionIDs: string[];
-  winningSubmissionIDs: string[];
 }
 
 export interface Project {
@@ -166,8 +165,10 @@ export interface Project {
   phone: string;
   bountyIDs: string[];
   quotePrice: number;
+  // 85% of quotePrice
+  totalFunds: number;
   stage: ProjectStage;
-  founderWalletAddress: string;
+  founderID: string;
 }
 
 export interface Bounty {
@@ -178,7 +179,7 @@ export interface Bounty {
   startDate: Date;
   types: BountyType[];
   deadline: Date;
-  participantsTeamIDs: string[];
+  participantTeamIDs: string[];
   stage: BountyStage;
   submissionIDs: string[];
   aboutProject?: string;
@@ -218,7 +219,7 @@ export interface Member {
   username: string;
   firstName: string;
   lastName: string;
-  walletAddress: string;
+  id: string;
   email: string;
   bio: string;
   level: number;
@@ -236,9 +237,9 @@ export interface Member {
 
 export interface TeamInvite {
   id: string;
-  fromAddress: string;
-  fromName: string;
+  fromMemberID: string;
+  fromMemberName: string;
   toTeamID: string;
   toTeamName: string;
-  toMemberAddress: string;
+  toMemberID: string;
 }

@@ -11,10 +11,11 @@ import bs58 from "bs58";
 import nacl from "tweetnacl";
 import { v4 as uuid } from "uuid";
 import jwt from "jsonwebtoken";
-import admin from "firebase-admin";
+import admin, { firestore } from "firebase-admin";
 import serviceAccount from "../service-key.json";
 
 import { generateAccessToken } from "./utils";
+import { Bounty } from "./sharedTypes";
 
 let refreshTokens = [];
 
@@ -59,6 +60,8 @@ app.use(
     extended: true,
   })
 );
+
+async function onRun() {}
 
 app.get("/", (req: Request, res: Response) => {
   res.json({ message: "New Dev Order Server is running" });
@@ -142,4 +145,5 @@ projectsSetup();
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
+  onRun();
 });

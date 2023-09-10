@@ -26,15 +26,16 @@ export function projectsSetup() {
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
 
       let data: Array<unknown> = [];
 
       if (member.playingRole === RoleType.Founder) {
-        data = (
-          await dbProjects
-            .where("founderWalletAddress", "==", member.walletAddress)
-            .get()
-        ).docs
+        data = (await dbProjects.where("founderID", "==", member.id).get()).docs
           .map((doc) => doc.data())
           ?.reverse();
       } else if (
@@ -65,7 +66,7 @@ export function projectsSetup() {
       data = await include({
         data,
         propertyName: "founder",
-        propertyNameID: "founderWalletAddress",
+        propertyNameID: "founderID",
         dbCollection: Collections.Members,
       });
 
@@ -114,6 +115,11 @@ export function projectsSetup() {
           res
         );
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
       function canProceedCreateProject() {
         let emailReg = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w\w+)+$/;
         if (!emailReg.test(email)) return false;
@@ -123,9 +129,11 @@ export function projectsSetup() {
         return res.status(400).json({ message: "Invalid data" });
       }
 
-      const founderDoc = await dbMembers.doc(member.walletAddress).get();
+      const founderDoc = await dbMembers.doc(member.id).get();
       if (!founderDoc.exists) {
-        return res.status(400).json({ message: "Member not found" });
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
       }
       const founder = founderDoc.data() as Member;
       const id = uuid();
@@ -138,7 +146,8 @@ export function projectsSetup() {
         email,
         phone,
         quotePrice: 0,
-        founderWalletAddress: founder.walletAddress,
+        totalFunds: 0,
+        founderID: founder.id,
         bountyIDs: [],
         createdAt: new Date(),
       };
@@ -151,22 +160,31 @@ export function projectsSetup() {
   );
   app.post(
     "/bountymgr-set-quote-price",
+    authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
       const { projectID, quotePrice } =
         validateFields<BountyMgrSetQuotePricePOSTData>(
           [{ name: "projectID" }, { name: "quotePrice", type: "number" }],
           req.body,
           res
         );
+
       if (!projectID || !quotePrice) {
         return res.status(400).json({ message: "Invalid data" });
       }
+
       await dbProjects.doc(projectID).update({
         quotePrice,
         stage: ProjectStage.PendingFounderPay,
       });
-      await dbMembers.doc(member.walletAddress).update({
+
+      await dbMembers.doc(member.id).update({
         level: member.level + 1,
       });
 
@@ -205,12 +223,17 @@ export function projectsSetup() {
       );
 
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
       const projectDoc = await dbProjects.doc(projectID).get();
       if (!projectDoc.exists) {
         return res.status(400).json({ message: "Project not found" });
       }
       const project = projectDoc.data() as Project;
-      if (project.founderWalletAddress !== member.walletAddress) {
+      if (project.founderID !== member.id) {
         return res.status(400).json({ message: "Unauthorized" });
       }
       dbProjects.doc(projectID).update({
