@@ -27,6 +27,7 @@ import {
   Submission,
   Team,
   SubmissionState,
+  TestCase,
 } from "../sharedTypes";
 import { v4 as uuid } from "uuid";
 import {
@@ -561,14 +562,25 @@ export function bountiesSetup() {
           .status(400)
           .json({ message: "You are not allowed to approve test cases." });
       }
-
+      const sanitizedTestCases = testCases.map((testCase) => {
+        return {
+          id: testCase?.id || uuid(),
+          testCase: testCase?.testCase || "Invalid test case",
+          status:
+            testCase?.status === "passed"
+              ? "passed"
+              : testCase?.status === "failed"
+              ? "failed"
+              : "unsure",
+        } as TestCase;
+      });
       const submissionDoc = await dbSubmissions.doc(submissionID).get();
       if (!submissionDoc.exists) {
         return res.status(400).json({ message: "Submission not found" });
       }
-      dbSubmissions.doc(submissionID).update({
-        testCases,
-      });
+      // dbSubmissions.doc(submissionID).update({
+      //   testCases: sanitizedTestCases,
+      // });
       let untypedSubmission = (
         await dbSubmissions.doc(submissionID).get()
       ).data();
@@ -596,12 +608,12 @@ export function bountiesSetup() {
         ) {
           dbSubmissions.doc(submissionID).update({
             state: SubmissionState.Approved,
-            testCases,
+            testCases: sanitizedTestCases,
             reason,
           });
         } else {
           dbSubmissions.doc(submissionID).update({
-            testCases,
+            testCases: sanitizedTestCases,
             reason,
           });
         }
@@ -613,7 +625,7 @@ export function bountiesSetup() {
       } else if (type === "reject") {
         dbSubmissions.doc(submissionID).update({
           state: SubmissionState.Rejected,
-          testCases,
+          testCases: sanitizedTestCases,
           reason,
         });
         if (
@@ -627,7 +639,7 @@ export function bountiesSetup() {
               isWinnerApprovedByManager: false,
               // Set the state as approved, but not a winner
               state: SubmissionState.Approved,
-              testCases,
+              testCases: sanitizedTestCases,
               reason,
             });
           await dbBounties.doc(submission.bountyID).update({

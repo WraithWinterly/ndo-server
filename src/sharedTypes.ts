@@ -60,7 +60,7 @@ export type ConfirmRewardPostData = {
 
 export type ApproveTestCasePostData = {
   submissionID: string;
-  testCases: string[];
+  testCases: TestCase[];
   reason: string;
   type: "approve" | "reject" | "approve-winner";
 };
@@ -116,8 +116,6 @@ export enum ProjectStage {
   PendingBountyMgrQuote = "PendingBountyMgrQuote",
   PendingFounderPay = "PendingFounderPay",
   PendingBountyDesign = "PendingBountyDesign",
-  PendingBountyValidator = "PendingBountyValidator",
-  PendingApproval = "PendingApproval",
   Declined = "Declined",
   Ready = "Ready",
 }
@@ -206,7 +204,7 @@ export interface Submission {
   videoDemo: string;
   repo: string;
   createdAt: Date;
-  testCases: string[];
+  testCases: TestCase[];
   state: SubmissionState;
   reason: string;
   bountyID: string;
@@ -214,6 +212,12 @@ export interface Submission {
   isWinnerApprovedByFounder: boolean;
   isWinnerApprovedByManager: boolean;
 }
+
+export type TestCase = {
+  id: string;
+  testCase: string;
+  status: "passed" | "failed" | "unsure";
+};
 
 export interface Member {
   username: string;
