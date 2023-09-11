@@ -241,7 +241,7 @@ export function bountiesSetup() {
         .get();
       const bounties = bountyDocs.docs.map((doc) => doc.data());
 
-      let reward = project.quotePrice;
+      let reward = project.totalFunds;
       if (reward <= 0) {
         return res.status(400).json({ message: "Invalid reward amount" });
       }
@@ -623,15 +623,28 @@ export function bountiesSetup() {
 
         return res.status(200).json({ message: "Success" });
       } else if (type === "reject") {
+        if (
+          submission.state === SubmissionState.WinnerAndRewardDone ||
+          submission.state === SubmissionState.WinnerConfirmed ||
+          submission.state === SubmissionState.WinnerAndRewardPendingOfficer
+        ) {
+          return res
+            .status(400)
+            .json({ message: "You cannot reject an already accepted winner" });
+        }
+
         dbSubmissions.doc(submissionID).update({
           state: SubmissionState.Rejected,
           testCases: sanitizedTestCases,
           reason,
         });
-        if (
-          submission.state === SubmissionState.WinnerAndRewardClaimed ||
-          submission.state === SubmissionState.WinnerConfirmed
-        ) {
+
+        dbSubmissions.doc(submissionID).update({
+          state: SubmissionState.Rejected,
+          testCases: sanitizedTestCases,
+          reason,
+        });
+        if (submission.state === SubmissionState.WinnerPendingConfirmation) {
           await dbSubmissions
             .doc(submission.bounty.winningSubmissionID)
             .update({
@@ -651,9 +664,10 @@ export function bountiesSetup() {
         if (submission.bounty.winningSubmissionID === "") {
           const id = uuid();
 
-          await dbSubmissions
-            .doc(submissionID)
-            .update({ state: SubmissionState.WinnerPendingConfirmation });
+          await dbSubmissions.doc(submissionID).update({
+            state: SubmissionState.WinnerPendingConfirmation,
+            testCases: sanitizedTestCases,
+          });
 
           const team = (
             await dbTeams.doc(submission.teamID).get()

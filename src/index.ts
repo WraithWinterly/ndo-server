@@ -6,6 +6,7 @@ import { bountiesSetup } from "./api/bounties";
 import { membersSetup } from "./api/members";
 import { teamsSetup } from "./api/teams";
 import { projectsSetup } from "./api/projects";
+import { officerSetup } from "./api/officer";
 
 import bs58 from "bs58";
 import nacl from "tweetnacl";
@@ -128,20 +129,11 @@ app.post("/authorize", (req: Request, res: Response) => {
   }
 });
 
-app.get("/alive", (req: Request, res: Response) => {
-  // res.status(400).json({ message: "Error simulation!" });
-  res.json({ message: "Alive!" });
-});
-
-app.post("/alive-post", (req: Request, res: Response) => {
-  // res.status(400).json({ message: "Error simulation!" });
-  res.json(req.body);
-});
-
 bountiesSetup();
 membersSetup();
 teamsSetup();
 projectsSetup();
+officerSetup();
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);

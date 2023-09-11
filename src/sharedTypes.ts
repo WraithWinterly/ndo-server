@@ -111,13 +111,23 @@ export type JoinTeamPOSTData = {
   toTeamID: string;
 };
 
+// Officer
+export type OfficerConfirmProjectPaidPOSTData = {
+  projectID: string;
+};
+
+export type OfficerConfirmBountyWinnerPOSTData = {
+  submissionID: string;
+};
+
 // END For POST Requests
 export enum ProjectStage {
   PendingBountyMgrQuote = "PendingBountyMgrQuote",
   PendingFounderPay = "PendingFounderPay",
+  PendingOfficer = "PendingOfficer",
   PendingBountyDesign = "PendingBountyDesign",
-  Declined = "Declined",
   Ready = "Ready",
+  Declined = "Declined",
 }
 
 export enum BountyType {
@@ -197,7 +207,8 @@ export enum SubmissionState {
   // We can infer if it is one of these states, it is also approved
   WinnerPendingConfirmation = "WinnerPendingConfirmation",
   WinnerConfirmed = "WinnerConfirmed",
-  WinnerAndRewardClaimed = "WinnerAndRewardClaimed",
+  WinnerAndRewardPendingOfficer = "WinnerAndRewardPendingOfficer",
+  WinnerAndRewardDone = "WinnerAndRewardDone",
 }
 export interface Submission {
   id: string;
@@ -230,6 +241,7 @@ export interface Member {
   roles: RoleType[];
   playingRole: RoleType;
   isFounder: boolean;
+  financialOfficer: boolean;
   bountiesWon: number;
   teamsJoined: number;
   membersInvited: number;

@@ -236,6 +236,7 @@ export function membersSetup() {
         bio: "",
         bountiesWon: 0,
         isFounder: false,
+        financialOfficer: false,
         level: 0,
         membersInvited: 0,
         playingRole: RoleType.BountyHunter,
@@ -402,7 +403,7 @@ export function membersSetup() {
 
       await dbSubmissions
         .doc(submissionID)
-        .update({ state: SubmissionState.WinnerAndRewardClaimed });
+        .update({ state: SubmissionState.WinnerAndRewardPendingOfficer });
 
       res.status(200).json({
         message: "Success",

@@ -35,17 +35,15 @@ export function projectsSetup() {
       let data: Array<unknown> = [];
 
       if (member.playingRole === RoleType.Founder) {
-        data = (await dbProjects.where("founderID", "==", member.id).get()).docs
-          .map((doc) => doc.data())
-          ?.reverse();
+        data = (
+          await dbProjects.where("founderID", "==", member.id).get()
+        ).docs.map((doc) => doc.data());
       } else if (
         member.playingRole === RoleType.BountyDesigner ||
         member.playingRole === RoleType.BountyManager ||
         member.playingRole === RoleType.BountyValidator
       ) {
-        data = (await dbProjects.get()).docs
-          .map((doc) => doc.data())
-          ?.reverse();
+        data = (await dbProjects.get()).docs.map((doc) => doc.data());
       }
 
       return res.send(data);
@@ -237,7 +235,7 @@ export function projectsSetup() {
         return res.status(400).json({ message: "Unauthorized" });
       }
       dbProjects.doc(projectID).update({
-        stage: ProjectStage.PendingBountyDesign,
+        stage: ProjectStage.PendingOfficer,
       });
 
       res.json({ message: "Success" });
