@@ -120,7 +120,42 @@ export type OfficerConfirmBountyWinnerPOSTData = {
   submissionID: string;
 };
 
+// Notifications
+export type RemoveNotificationPOSTData = {
+  notificationID: string;
+};
+
 // END For POST Requests
+
+export enum NotificationType {
+  ToBM_ProposalCreated = "ToBM_ProposalCreated",
+  ToFounder_BMQuoted = "ToFounder_BMQuoted",
+  ToFounder_BountyMgrDeclined = "ToFounder_BountyMgrDeclined",
+  ToBMOfficer_FounderAcceptedQuote = "ToBMOfficer_FounderAcceptedQuote",
+  ToBMBDFounder_ReadyForBountyDesign = "ToBMBDFounder_ReadyForBountyDesign",
+  ToBMBVFounder_BountyNeedsApproval = "ToBMBVFounder_BountyNeedsApproval",
+  ToBMBDBVFounder_BountyApproved = "ToFounder_BountyApproved",
+  ToBV_SubmissionSubmitted = "ToBV_SubmissionSubmitted",
+  ToBH_SubmissionApproved = "ToBH_SubmissionApproved",
+  ToBH_SubmissionRejected = "ToBH_SubmissionRejected",
+  ToBMFounder_WinnerSelected = "ToBMFounder_WinnerSelected",
+  ToBHBVOfficerFounder_WinnerApproved = "ToBHBVOfficer_WinnerApproved",
+  ToBMBVFounder_WinnerRejected = "ToBMBVFounder_WinnerRejected",
+}
+
+export type Notification = {
+  id: string;
+  teamID?: string;
+  teamName?: string;
+  bountyID?: string;
+  bountyName?: string;
+  submissionID?: string;
+  projectID?: string;
+  projectName?: string;
+  type: NotificationType;
+  createdAt: Date;
+};
+
 export enum ProjectStage {
   PendingBountyMgrQuote = "PendingBountyMgrQuote",
   PendingFounderPay = "PendingFounderPay",
@@ -249,6 +284,7 @@ export interface Member {
   teamIDs: string[];
   admin: boolean;
   adminec: boolean;
+  notificationIDs: string[];
 }
 
 export interface TeamInvite {

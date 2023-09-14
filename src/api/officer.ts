@@ -4,6 +4,7 @@ import {
   Bounty,
   BountyStage,
   Member,
+  NotificationType,
   OfficerConfirmBountyWinnerPOSTData,
   OfficerConfirmProjectPaidPOSTData,
   Project,
@@ -19,6 +20,7 @@ import {
   include,
   validateFields,
 } from "../utils";
+import sendNotification from "./inbox";
 
 export function officerSetup() {
   app.get(
@@ -136,6 +138,13 @@ export function officerSetup() {
           totalFunds: project.quotePrice * 0.85,
         });
       }
+
+      await sendNotification({
+        notificationType: NotificationType.ToBMBDFounder_ReadyForBountyDesign,
+        projectID: body.projectID,
+        projectName: project.title,
+        founderID: project.founderID,
+      });
 
       return res.status(200).json({ message: "Success" });
     }

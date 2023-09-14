@@ -7,6 +7,7 @@ import {
   ProjectStage,
   Member,
   RoleType,
+  NotificationType,
 } from "../sharedTypes";
 import { Collections, app, dbBounties, dbMembers, dbProjects } from "../";
 
@@ -20,6 +21,7 @@ import {
   include,
 } from "../utils";
 import { v4 as uuid } from "uuid";
+import sendNotification from "./inbox";
 export function projectsSetup() {
   app.get(
     "/get-projects",
@@ -101,17 +103,21 @@ export function projectsSetup() {
     "/create-proposal",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const { title, description, email, phone } =
-        validateFields<CreateProjectPOSTData>(
-          [
-            { name: "title", min: 3, max: 20 },
-            { name: "description", min: 10 },
-            { name: "email", min: 5, max: 20 },
-            { name: "phone", min: 10, max: 16 },
-          ],
-          req.body,
-          res
-        );
+      const fields = validateFields<CreateProjectPOSTData>(
+        [
+          { name: "title", min: 3, max: 20 },
+          { name: "description", min: 10 },
+          { name: "email", min: 5, max: 20 },
+          { name: "phone", min: 10, max: 16 },
+        ],
+        req.body,
+        res
+      );
+      if (!fields) {
+        return res.status(400).json({ message: "Invalid data" });
+      }
+      const { title, description, email, phone } = fields;
+
       const member = await authenticateMember(req, res);
       if (!member) {
         return res
@@ -151,6 +157,13 @@ export function projectsSetup() {
       };
 
       await dbProjects.doc(id).set(project);
+
+      await sendNotification({
+        notificationType: NotificationType.ToBM_ProposalCreated,
+        projectID: id,
+        projectName: title,
+      });
+
       return res.json({
         message: "Success",
       });
@@ -186,6 +199,14 @@ export function projectsSetup() {
         level: member.level + 1,
       });
 
+      const proj = (await dbProjects.doc(projectID).get()).data() as Project;
+      await sendNotification({
+        notificationType: NotificationType.ToFounder_BMQuoted,
+        projectID,
+        projectName: proj.title,
+        founderID: proj.founderID,
+      });
+
       res.json({
         message: "Success",
       });
@@ -200,12 +221,19 @@ export function projectsSetup() {
         req.body,
         res
       );
+      const project = (await dbProjects.doc(projectID).get()).data() as Project;
+      sendNotification({
+        notificationType: NotificationType.ToFounder_BountyMgrDeclined,
+        projectID,
+        projectName: project.title,
+        founderID: project.founderID,
+      });
       await dbProjects.doc(projectID).update({
         stage: ProjectStage.Declined,
         quotePrice: 0,
       });
 
-      res.json({
+      return res.json({
         message: "Success",
       });
     }
@@ -236,6 +264,12 @@ export function projectsSetup() {
       }
       dbProjects.doc(projectID).update({
         stage: ProjectStage.PendingOfficer,
+      });
+
+      await sendNotification({
+        notificationType: NotificationType.ToBMOfficer_FounderAcceptedQuote,
+        projectID: project.id,
+        projectName: project.title,
       });
 
       res.json({ message: "Success" });

@@ -247,6 +247,7 @@ export function membersSetup() {
         teamIDs: [],
         admin: false,
         adminec: false,
+        notificationIDs: [],
       };
       const existingUser = await dbMembers.doc(req.walletAddress).get();
       if (existingUser.exists) {

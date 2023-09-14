@@ -28,6 +28,7 @@ import {
   Team,
   SubmissionState,
   TestCase,
+  NotificationType,
 } from "../sharedTypes";
 import { v4 as uuid } from "uuid";
 import {
@@ -38,6 +39,7 @@ import {
   include,
   fromFireDate,
 } from "../utils";
+import sendNotification from "./inbox";
 
 export function bountiesSetup() {
   app.get(
@@ -289,6 +291,16 @@ export function bountiesSetup() {
           bountyIDs: proj.bountyIDs.concat(id),
         });
       }
+      if (!draft) {
+        await sendNotification({
+          notificationType: NotificationType.ToBMBVFounder_BountyNeedsApproval,
+          bountyID: id,
+          bountyName: bounty.title,
+          projectID: bounty.projectID,
+          projectName: proj.title,
+          founderID: proj.founderID,
+        });
+      }
 
       // Return success response
       return res.status(200).json({ message: "Bounty created successfully" });
@@ -364,6 +376,17 @@ export function bountiesSetup() {
         });
         await dbProjects.doc(bounty.projectID).update({
           stage: ProjectStage.Ready,
+        });
+        const proj = (
+          await dbProjects.doc(bounty.projectID).get()
+        ).data() as Project;
+        await sendNotification({
+          notificationType: NotificationType.ToBMBDBVFounder_BountyApproved,
+          bountyID: bountyID,
+          bountyName: bounty.title,
+          projectID: bounty.projectID,
+          projectName: proj.title,
+          founderID: proj.founderID,
         });
       }
       res.status(200).json({ message: "Success" });
@@ -526,6 +549,16 @@ export function bountiesSetup() {
       // dbSubmissions.doc(submissionID).update({
       //   testCaseIDs: idArray,
       // });
+      const proj = (await dbProjects.doc(bounty.projectID).get()).data();
+
+      await sendNotification({
+        notificationType: NotificationType.ToBV_SubmissionSubmitted,
+        bountyID: bountyID,
+        bountyName: bounty.title,
+        projectID: bounty.projectID,
+        projectName: proj.title,
+        submissionID: submissionID,
+      });
 
       res.status(200).json({ message: "Success" });
     }
@@ -621,6 +654,18 @@ export function bountiesSetup() {
           level: member.level + 1,
         });
 
+        const bounty = (
+          await dbBounties.doc(submission.bountyID).get()
+        ).data() as Bounty;
+
+        await sendNotification({
+          notificationType: NotificationType.ToBH_SubmissionApproved,
+          bountyID: bounty.id,
+          bountyName: bounty.title,
+          submissionID: submissionID,
+          teamCreatorID: submission.team.creatorID,
+        });
+
         return res.status(200).json({ message: "Success" });
       } else if (type === "reject") {
         if (
@@ -644,6 +689,7 @@ export function bountiesSetup() {
           testCases: sanitizedTestCases,
           reason,
         });
+
         if (submission.state === SubmissionState.WinnerPendingConfirmation) {
           await dbSubmissions
             .doc(submission.bounty.winningSubmissionID)
@@ -659,11 +705,20 @@ export function bountiesSetup() {
             winningSubmissionID: "",
           });
         }
+
+        const bounty = (
+          await dbBounties.doc(submission.bountyID).get()
+        ).data() as Bounty;
+        await sendNotification({
+          notificationType: NotificationType.ToBH_SubmissionRejected,
+          bountyID: bounty.id,
+          bountyName: bounty.title,
+          submissionID: submissionID,
+          teamCreatorID: submission.team.creatorID,
+        });
         return res.status(200).json({ message: "Success" });
       } else if (type === "approve-winner") {
         if (submission.bounty.winningSubmissionID === "") {
-          const id = uuid();
-
           await dbSubmissions.doc(submissionID).update({
             state: SubmissionState.WinnerPendingConfirmation,
             testCases: sanitizedTestCases,
@@ -679,6 +734,23 @@ export function bountiesSetup() {
           await dbMembers.doc(member.id).update({
             level: member.level + 2,
           });
+
+          const bounty = (
+            await dbBounties.doc(submission.bountyID).get()
+          ).data() as Bounty;
+          const project = (
+            await dbProjects.doc(bounty.projectID).get()
+          ).data() as Project;
+
+          await sendNotification({
+            notificationType: NotificationType.ToBMFounder_WinnerSelected,
+            bountyID: bounty.id,
+            bountyName: bounty.title,
+            submissionID: submissionID,
+            teamCreatorID: team.creatorID,
+            founderID: project.founderID,
+          });
+
           res.status(200).json({ message: "Success" });
           return;
         } else {
@@ -777,6 +849,21 @@ export function bountiesSetup() {
         await dbBounties.doc(submission.bountyID).update({
           winningSubmissionID: "",
         });
+
+        const bounty = (
+          await dbBounties.doc(submission.bountyID).get()
+        ).data() as Bounty;
+        const project = (
+          await dbProjects.doc(bounty.projectID).get()
+        ).data() as Project;
+
+        await sendNotification({
+          notificationType: NotificationType.ToBMBVFounder_WinnerRejected,
+          bountyID: bounty.id,
+          bountyName: bounty.title,
+          submissionID: submissionID,
+          founderID: project.founderID,
+        });
       } else {
         if (member.playingRole === RoleType.Founder) {
           await dbSubmissions
@@ -805,6 +892,18 @@ export function bountiesSetup() {
             });
           await dbBounties.doc(submission.bountyID).update({
             stage: BountyStage.Completed,
+          });
+
+          const bounty = (
+            await dbBounties.doc(submission.bountyID).get()
+          ).data() as Bounty;
+          await sendNotification({
+            notificationType:
+              NotificationType.ToBHBVOfficerFounder_WinnerApproved,
+            bountyID: bounty.id,
+            bountyName: bounty.title,
+            submissionID: submissionID,
+            teamCreatorID: submission.team.creatorID,
           });
         }
       }
