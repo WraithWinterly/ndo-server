@@ -109,12 +109,16 @@ export default async function sendNotification(options: {
       members.push((await dbMembers.doc(founderID).get()).data() as Member);
       break;
     case NotificationType.ToBMOfficer_FounderAcceptedQuote:
-      members = (
+      const mgrs = (
         await dbMembers
           .where("roles", "array-contains", RoleType.BountyManager)
-          .where("isOfficer", "==", true)
           .get()
       ).docs.map((doc) => doc.data()) as Member[];
+      const officers = (
+        await dbMembers.where("financialOfficer", "==", true).get()
+      ).docs.map((doc) => doc.data()) as Member[];
+      members = combineArrayNoDupes(mgrs, officers);
+
       break;
     case NotificationType.ToFounder_BountyMgrDeclined:
       members.push((await dbMembers.doc(founderID).get()).data() as Member);
@@ -200,12 +204,17 @@ export default async function sendNotification(options: {
       }
       break;
     case NotificationType.ToBHBVOfficerFounder_WinnerApproved:
-      members = (
+      const mgrsv = (
         await dbMembers
           .where("roles", "array-contains", RoleType.BountyValidator)
-          .where("isOfficer", "==", true)
           .get()
       ).docs.map((doc) => doc.data()) as Member[];
+      const officersv = (
+        await dbMembers.where("financialOfficer", "==", true).get()
+      ).docs.map((doc) => doc.data()) as Member[];
+
+      members = combineArrayNoDupes(mgrsv, officersv);
+
       if (!members.map((member) => member.id).includes(teamCreatorID)) {
         members.push(
           (await dbMembers.doc(teamCreatorID).get()).data() as Member
@@ -214,6 +223,7 @@ export default async function sendNotification(options: {
       if (!members.map((member) => member.id).includes(founderID)) {
         members.push((await dbMembers.doc(founderID).get()).data() as Member);
       }
+
       break;
     case NotificationType.ToBMBVFounder_WinnerRejected:
       const managersvv = (
