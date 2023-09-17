@@ -209,18 +209,20 @@ export function membersSetup() {
     "/create-profile",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const { email, firstName, lastName, username } =
-        validateFields<CreateProfilePOSTData>(
-          [
-            { name: "email", type: "string", min: 3, max: 255 },
-            { name: "firstName", type: "string", min: 2, max: 24 },
-            { name: "lastName", type: "string", min: 2, max: 24 },
-            { name: "username", type: "string", min: 2, max: 24 },
-          ],
-          req.body,
-          res
-        );
-
+      const fields = validateFields<CreateProfilePOSTData>(
+        [
+          { name: "email", type: "string", min: 3, max: 255 },
+          { name: "firstName", type: "string", min: 2, max: 24 },
+          { name: "lastName", type: "string", min: 2, max: 24 },
+          { name: "username", type: "string", min: 2, max: 24 },
+        ],
+        req.body,
+        res
+      );
+      if (!fields) {
+        return res.status(400).json({ message: "Invalid data" });
+      }
+      const { email, firstName, lastName, username } = fields;
       const emailReg = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w\w+)+$/;
       if (!emailReg.test(email.trim())) {
         return res
@@ -358,11 +360,15 @@ export function membersSetup() {
     "/confirm-reward",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const { submissionID } = validateFields<ConfirmRewardPostData>(
+      const fields = validateFields<ConfirmRewardPostData>(
         [{ name: "submissionID" }],
         req.body,
         res
       );
+      if (!fields) {
+        return res.status(400).json({ message: "Invalid data" });
+      }
+      const { submissionID } = fields;
 
       const member = await authenticateMember(req, res);
       if (!member) {

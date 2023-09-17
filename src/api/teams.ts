@@ -70,11 +70,16 @@ export function teamsSetup() {
           .status(400)
           .json({ message: "You are not authenticated with the server." });
       }
-      const { name, description, link } = validateFields<CreateTeamPOSTData>(
+      const fields = validateFields<CreateTeamPOSTData>(
         [{ name: "name" }, { name: "description" }, { name: "link" }],
         req.body,
         res
       );
+      if (!fields) {
+        return res.status(400).json({ message: "Invalid data" });
+      }
+      const { name, description, link } = fields;
+
       try {
         const linkRegex = /^(ftp|http|https):\/\/[^ "]+$/;
 
@@ -204,11 +209,15 @@ async function joinOrRejectTeamInvite(
   type: "accept" | "reject"
 ) {
   const authMember = await authenticateMember(req, res);
-  const { toTeamID } = validateFields<JoinTeamPOSTData>(
+  const fields = validateFields<JoinTeamPOSTData>(
     [{ name: "toTeamID" }],
     req.body,
     res
   );
+  if (!fields) {
+    return res.status(400).json({ message: "Invalid data" });
+  }
+  const { toTeamID } = fields;
 
   // Ensure correct body data
   const memberWithTeams = (await include({

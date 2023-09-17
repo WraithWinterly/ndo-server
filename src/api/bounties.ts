@@ -46,6 +46,13 @@ export function bountiesSetup() {
     "/get-bounties",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
+      const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
+
       let data = (await dbBounties.get()).docs.map((doc) => doc.data());
       data = (await include({
         data,
@@ -53,6 +60,9 @@ export function bountiesSetup() {
         propertyNameID: "projectID",
         dbCollection: Collections.Projects,
       })) as Object[];
+      if (member.playingRole === RoleType.Founder) {
+        data = data.filter((bounty) => bounty.project.founderID === member.id);
+      }
 
       return res.send(data);
     }
@@ -141,11 +151,15 @@ export function bountiesSetup() {
           .status(400)
           .json({ message: "You are not authenticated with the server." });
       }
-      const { forTeam, bountyID } = validateFields<StartBountyPOSTData>(
+      const fields = validateFields<StartBountyPOSTData>(
         [{ name: "forTeam" }, { name: "bountyID" }],
         req.body,
         res
       );
+      if (!fields) {
+        return res.status(400).json({ message: "Invalid data" });
+      }
+      const { forTeam, bountyID } = fields;
 
       const team = (await dbTeams.doc(forTeam).get()).data();
 
@@ -316,11 +330,15 @@ export function bountiesSetup() {
           .status(400)
           .json({ message: "You are not authenticated with the server." });
       }
-      const { approve, bountyID } = validateFields<SetApproveBountyPostData>(
+      const fields = validateFields<SetApproveBountyPostData>(
         [{ name: "approve", type: "boolean" }, { name: "bountyID" }],
         req.body,
         res
       );
+      if (!fields) {
+        return res.status(400).json({ message: "Invalid data" });
+      }
+      const { approve, bountyID } = fields;
 
       const allowedApprovedRoles = [
         RoleType.BountyManager,
@@ -568,17 +586,22 @@ export function bountiesSetup() {
     "/approve-test-cases",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const { submissionID, testCases, reason, type } =
-        validateFields<ApproveTestCasePostData>(
-          [
-            { name: "submissionID" },
-            { name: "testCases", type: "array" },
-            { name: "reason" },
-            { name: "type" },
-          ],
-          req.body,
-          res
-        );
+      const fields = validateFields<ApproveTestCasePostData>(
+        [
+          { name: "submissionID" },
+          { name: "testCases", type: "array" },
+          { name: "reason" },
+          { name: "type" },
+        ],
+        req.body,
+        res
+      );
+      if (!fields) {
+        return res.status(400).json({ message: "Invalid data" });
+      }
+
+      const { submissionID, testCases, reason, type } = fields;
+      
       if (type != "approve" && type != "reject" && type != "approve-winner") {
         return res.status(400).json({ message: "Invalid type" });
       }

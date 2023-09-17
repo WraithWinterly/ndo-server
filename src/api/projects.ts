@@ -216,11 +216,16 @@ export function projectsSetup() {
     "/bountymgr-decline",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const { projectID } = validateFields<BountyMgrDeclineProjectPOSTData>(
+      const fields = validateFields<BountyMgrDeclineProjectPOSTData>(
         [{ name: "projectID" }],
         req.body,
         res
       );
+      if (!fields) {
+        return res.status(400).json({ message: "Invalid data" });
+      }
+      const { projectID } = fields;
+
       const project = (await dbProjects.doc(projectID).get()).data() as Project;
       sendNotification({
         notificationType: NotificationType.ToFounder_BountyMgrDeclined,
@@ -242,11 +247,15 @@ export function projectsSetup() {
     "/founder-confirm-pay",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const { projectID } = validateFields<FounderConfirmPayPostData>(
+      const fields = validateFields<FounderConfirmPayPostData>(
         [{ name: "projectID" }],
         req.body,
         res
       );
+      if (!fields) {
+        return res.status(400).json({ message: "Invalid data" });
+      }
+      const { projectID } = fields;
 
       const member = await authenticateMember(req, res);
       if (!member) {
