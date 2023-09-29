@@ -6,6 +6,8 @@ import {
   Project,
   ProjectStage,
   Member,
+  RoleType,
+  NotificationType,
 } from "../sharedTypes";
 import { Collections, app, dbBounties, dbMembers, dbProjects } from "../";
 
@@ -19,14 +21,32 @@ import {
   include,
 } from "../utils";
 import { v4 as uuid } from "uuid";
+import sendNotification from "./inbox";
 export function projectsSetup() {
   app.get(
     "/get-projects",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const data = (await dbProjects.get()).docs
-        .map((doc) => doc.data())
-        ?.reverse();
+      const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
+
+      let data: Array<unknown> = [];
+
+      if (member.playingRole === RoleType.Founder) {
+        data = (
+          await dbProjects.where("founderID", "==", member.id).get()
+        ).docs.map((doc) => doc.data());
+      } else if (
+        member.playingRole === RoleType.BountyDesigner ||
+        member.playingRole === RoleType.BountyManager ||
+        member.playingRole === RoleType.BountyValidator
+      ) {
+        data = (await dbProjects.get()).docs.map((doc) => doc.data());
+      }
 
       return res.send(data);
     }
@@ -46,7 +66,7 @@ export function projectsSetup() {
       data = await include({
         data,
         propertyName: "founder",
-        propertyNameID: "founderWalletAddress",
+        propertyNameID: "founderID",
         dbCollection: Collections.Members,
       });
 
@@ -83,18 +103,27 @@ export function projectsSetup() {
     "/create-proposal",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const { title, description, email, phone } =
-        validateFields<CreateProjectPOSTData>(
-          [
-            { name: "title", min: 3, max: 20 },
-            { name: "description", min: 10 },
-            { name: "email", min: 5, max: 20 },
-            { name: "phone", min: 10, max: 16 },
-          ],
-          req.body,
-          res
-        );
+      const fields = validateFields<CreateProjectPOSTData>(
+        [
+          { name: "title", min: 3, max: 20 },
+          { name: "description", min: 10 },
+          { name: "email", min: 5, max: 20 },
+          { name: "phone", min: 10, max: 16 },
+        ],
+        req.body,
+        res
+      );
+      if (!fields) {
+        return res.status(400).json({ message: "Invalid data" });
+      }
+      const { title, description, email, phone } = fields;
+
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
       function canProceedCreateProject() {
         let emailReg = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w\w+)+$/;
         if (!emailReg.test(email)) return false;
@@ -104,12 +133,15 @@ export function projectsSetup() {
         return res.status(400).json({ message: "Invalid data" });
       }
 
-      const founderDoc = await dbMembers.doc(member.walletAddress).get();
+      const founderDoc = await dbMembers.doc(member.id).get();
       if (!founderDoc.exists) {
-        return res.status(400).json({ message: "Member not found" });
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
       }
       const founder = founderDoc.data() as Member;
       const id = uuid();
+
       const project: Project = {
         id,
         title,
@@ -118,11 +150,20 @@ export function projectsSetup() {
         email,
         phone,
         quotePrice: 0,
-        founderWalletAddress: founder.walletAddress,
+        totalFunds: 0,
+        founderID: founder.id,
         bountyIDs: [],
         createdAt: new Date(),
       };
+
       await dbProjects.doc(id).set(project);
+
+      await sendNotification({
+        notificationType: NotificationType.ToBM_ProposalCreated,
+        projectID: id,
+        projectName: title,
+      });
+
       return res.json({
         message: "Success",
       });
@@ -130,23 +171,40 @@ export function projectsSetup() {
   );
   app.post(
     "/bountymgr-set-quote-price",
+    authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
       const { projectID, quotePrice } =
         validateFields<BountyMgrSetQuotePricePOSTData>(
           [{ name: "projectID" }, { name: "quotePrice", type: "number" }],
           req.body,
           res
         );
+
       if (!projectID || !quotePrice) {
         return res.status(400).json({ message: "Invalid data" });
       }
+
       await dbProjects.doc(projectID).update({
         quotePrice,
         stage: ProjectStage.PendingFounderPay,
       });
-      await dbMembers.doc(member.walletAddress).update({
+
+      await dbMembers.doc(member.id).update({
         level: member.level + 1,
+      });
+
+      const proj = (await dbProjects.doc(projectID).get()).data() as Project;
+      await sendNotification({
+        notificationType: NotificationType.ToFounder_BMQuoted,
+        projectID,
+        projectName: proj.title,
+        founderID: proj.founderID,
       });
 
       res.json({
@@ -158,17 +216,29 @@ export function projectsSetup() {
     "/bountymgr-decline",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const { projectID } = validateFields<BountyMgrDeclineProjectPOSTData>(
+      const fields = validateFields<BountyMgrDeclineProjectPOSTData>(
         [{ name: "projectID" }],
         req.body,
         res
       );
+      if (!fields) {
+        return res.status(400).json({ message: "Invalid data" });
+      }
+      const { projectID } = fields;
+
+      const project = (await dbProjects.doc(projectID).get()).data() as Project;
+      sendNotification({
+        notificationType: NotificationType.ToFounder_BountyMgrDeclined,
+        projectID,
+        projectName: project.title,
+        founderID: project.founderID,
+      });
       await dbProjects.doc(projectID).update({
         stage: ProjectStage.Declined,
         quotePrice: 0,
       });
 
-      res.json({
+      return res.json({
         message: "Success",
       });
     }
@@ -177,23 +247,38 @@ export function projectsSetup() {
     "/founder-confirm-pay",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const { projectID } = validateFields<FounderConfirmPayPostData>(
+      const fields = validateFields<FounderConfirmPayPostData>(
         [{ name: "projectID" }],
         req.body,
         res
       );
+      if (!fields) {
+        return res.status(400).json({ message: "Invalid data" });
+      }
+      const { projectID } = fields;
 
       const member = await authenticateMember(req, res);
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
       const projectDoc = await dbProjects.doc(projectID).get();
       if (!projectDoc.exists) {
         return res.status(400).json({ message: "Project not found" });
       }
       const project = projectDoc.data() as Project;
-      if (project.founderWalletAddress !== member.walletAddress) {
+      if (project.founderID !== member.id) {
         return res.status(400).json({ message: "Unauthorized" });
       }
       dbProjects.doc(projectID).update({
-        stage: ProjectStage.PendingBountyDesign,
+        stage: ProjectStage.PendingOfficer,
+      });
+
+      await sendNotification({
+        notificationType: NotificationType.ToBMOfficer_FounderAcceptedQuote,
+        projectID: project.id,
+        projectName: project.title,
       });
 
       res.json({ message: "Success" });

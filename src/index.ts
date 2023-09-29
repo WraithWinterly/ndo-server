@@ -6,15 +6,18 @@ import { bountiesSetup } from "./api/bounties";
 import { membersSetup } from "./api/members";
 import { teamsSetup } from "./api/teams";
 import { projectsSetup } from "./api/projects";
+import { officerSetup } from "./api/officer";
 
 import bs58 from "bs58";
 import nacl from "tweetnacl";
 import { v4 as uuid } from "uuid";
 import jwt from "jsonwebtoken";
-import admin from "firebase-admin";
+import admin, { firestore } from "firebase-admin";
 import serviceAccount from "../service-key.json";
 
 import { generateAccessToken } from "./utils";
+import { Bounty, Member, Notification, NotificationType } from "./sharedTypes";
+import { notificationSetup } from "./api/inbox";
 
 let refreshTokens = [];
 
@@ -40,6 +43,7 @@ export enum Collections {
   TeamInvites = "ndo-team-invites",
   Submissions = "ndo-submissions",
   TestCases = "ndo-test-cases",
+  Notifications = "ndo-notifications",
 }
 
 export const dbMembers = db.collection(Collections.Members);
@@ -48,6 +52,7 @@ export const dbTeams = db.collection(Collections.Teams);
 export const dbProjects = db.collection(Collections.Projects);
 export const dbTeamInvites = db.collection(Collections.TeamInvites);
 export const dbSubmissions = db.collection(Collections.Submissions);
+export const dbNotifications = db.collection(Collections.Notifications);
 
 export const app: Express = express();
 const port = process.env.PORT;
@@ -59,6 +64,17 @@ app.use(
     extended: true,
   })
 );
+
+async function onRun() {
+  // dbNotifications.get().then((snapshot) => {
+  //   snapshot.docs.forEach((doc) => {
+  //     const notification = doc.data() as Notification;
+  //     dbNotifications.doc(notification.id).update({
+  //       createdAt: new Date(),
+  //     });
+  //   });
+  // });
+}
 
 app.get("/", (req: Request, res: Response) => {
   res.json({ message: "New Dev Order Server is running" });
@@ -125,21 +141,14 @@ app.post("/authorize", (req: Request, res: Response) => {
   }
 });
 
-app.get("/alive", (req: Request, res: Response) => {
-  // res.status(400).json({ message: "Error simulation!" });
-  res.json({ message: "Alive!" });
-});
-
-app.post("/alive-post", (req: Request, res: Response) => {
-  // res.status(400).json({ message: "Error simulation!" });
-  res.json(req.body);
-});
-
 bountiesSetup();
 membersSetup();
 teamsSetup();
 projectsSetup();
+officerSetup();
+notificationSetup();
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
+  onRun();
 });

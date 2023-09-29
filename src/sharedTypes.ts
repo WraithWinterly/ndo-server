@@ -60,7 +60,7 @@ export type ConfirmRewardPostData = {
 
 export type ApproveTestCasePostData = {
   submissionID: string;
-  testCases: string[];
+  testCases: TestCase[];
   reason: string;
   type: "approve" | "reject" | "approve-winner";
 };
@@ -104,22 +104,65 @@ export type CreateTeamPOSTData = {
 };
 
 export type InviteToTeamPOSTData = {
-  toAddress: string;
-  toTeam: string;
+  toMemberID: string;
+  toTeamID: string;
 };
 export type JoinTeamPOSTData = {
   toTeamID: string;
 };
 
+// Officer
+export type OfficerConfirmProjectPaidPOSTData = {
+  projectID: string;
+};
+
+export type OfficerConfirmBountyWinnerPOSTData = {
+  submissionID: string;
+};
+
+// Notifications
+export type RemoveNotificationPOSTData = {
+  notificationID: string;
+};
+
 // END For POST Requests
+
+export enum NotificationType {
+  ToBM_ProposalCreated = "ToBM_ProposalCreated",
+  ToFounder_BMQuoted = "ToFounder_BMQuoted",
+  ToFounder_BountyMgrDeclined = "ToFounder_BountyMgrDeclined",
+  ToBMOfficer_FounderAcceptedQuote = "ToBMOfficer_FounderAcceptedQuote",
+  ToBMBDFounder_ReadyForBountyDesign = "ToBMBDFounder_ReadyForBountyDesign",
+  ToBMBVFounder_BountyNeedsApproval = "ToBMBVFounder_BountyNeedsApproval",
+  ToBMBDBVFounder_BountyApproved = "ToFounder_BountyApproved",
+  ToBV_SubmissionSubmitted = "ToBV_SubmissionSubmitted",
+  ToBH_SubmissionApproved = "ToBH_SubmissionApproved",
+  ToBH_SubmissionRejected = "ToBH_SubmissionRejected",
+  ToBMFounder_WinnerSelected = "ToBMFounder_WinnerSelected",
+  ToBHBVOfficerFounder_WinnerApproved = "ToBHBVOfficer_WinnerApproved",
+  ToBMBVFounder_WinnerRejected = "ToBMBVFounder_WinnerRejected",
+}
+
+export type Notification = {
+  id: string;
+  teamID?: string;
+  teamName?: string;
+  bountyID?: string;
+  bountyName?: string;
+  submissionID?: string;
+  projectID?: string;
+  projectName?: string;
+  type: NotificationType;
+  createdAt: Date;
+};
+
 export enum ProjectStage {
   PendingBountyMgrQuote = "PendingBountyMgrQuote",
   PendingFounderPay = "PendingFounderPay",
+  PendingOfficer = "PendingOfficer",
   PendingBountyDesign = "PendingBountyDesign",
-  PendingBountyValidator = "PendingBountyValidator",
-  PendingApproval = "PendingApproval",
-  Declined = "Declined",
   Ready = "Ready",
+  Declined = "Declined",
 }
 
 export enum BountyType {
@@ -152,9 +195,8 @@ export interface Team {
   createdAt: Date;
   link: string;
   memberIDs: string[];
-  creatorAddress: string;
+  creatorID: string;
   submissionIDs: string[];
-  winningSubmissionIDs: string[];
 }
 
 export interface Project {
@@ -166,8 +208,10 @@ export interface Project {
   phone: string;
   bountyIDs: string[];
   quotePrice: number;
+  // 85% of quotePrice
+  totalFunds: number;
   stage: ProjectStage;
-  founderWalletAddress: string;
+  founderID: string;
 }
 
 export interface Bounty {
@@ -178,7 +222,7 @@ export interface Bounty {
   startDate: Date;
   types: BountyType[];
   deadline: Date;
-  participantsTeamIDs: string[];
+  participantTeamIDs: string[];
   stage: BountyStage;
   submissionIDs: string[];
   aboutProject?: string;
@@ -187,7 +231,6 @@ export interface Bounty {
   approvedByManager: boolean;
   approvedByValidator: boolean;
   reward: number;
-  founderAddress: string;
   projectID: string;
   winningSubmissionID: string;
 }
@@ -199,14 +242,15 @@ export enum SubmissionState {
   // We can infer if it is one of these states, it is also approved
   WinnerPendingConfirmation = "WinnerPendingConfirmation",
   WinnerConfirmed = "WinnerConfirmed",
-  WinnerAndRewardClaimed = "WinnerAndRewardClaimed",
+  WinnerAndRewardPendingOfficer = "WinnerAndRewardPendingOfficer",
+  WinnerAndRewardDone = "WinnerAndRewardDone",
 }
 export interface Submission {
   id: string;
   videoDemo: string;
   repo: string;
   createdAt: Date;
-  testCases: string[];
+  testCases: TestCase[];
   state: SubmissionState;
   reason: string;
   bountyID: string;
@@ -215,29 +259,39 @@ export interface Submission {
   isWinnerApprovedByManager: boolean;
 }
 
+export type TestCase = {
+  id: string;
+  testCase: string;
+  status: "passed" | "failed" | "unsure";
+};
+
 export interface Member {
   username: string;
   firstName: string;
   lastName: string;
-  walletAddress: string;
+  id: string;
   email: string;
   bio: string;
   level: number;
   roles: RoleType[];
   playingRole: RoleType;
   isFounder: boolean;
+  financialOfficer: boolean;
   bountiesWon: number;
   teamsJoined: number;
   membersInvited: number;
   teamInviteIDs: string[];
   teamIDs: string[];
+  admin: boolean;
+  adminec: boolean;
+  notificationIDs: string[];
 }
 
 export interface TeamInvite {
   id: string;
-  fromAddress: string;
-  fromName: string;
+  fromMemberID: string;
+  fromMemberName: string;
   toTeamID: string;
   toTeamName: string;
-  toMemberAddress: string;
+  toMemberID: string;
 }

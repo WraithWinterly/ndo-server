@@ -23,7 +23,17 @@ export function teamsSetup() {
     "/get-teams",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      let teams = (await dbTeams.get()).docs.map((doc) => doc.data());
+      const member = await authenticateMember(req, res);
+      let teams: Array<Team>;
+      if (member.admin && member.adminec) {
+        teams = (await dbTeams.get()).docs.map((doc) =>
+          doc.data()
+        ) as Array<Team>;
+      } else {
+        teams = (
+          await dbTeams.where("memberIDs", "array-contains", member.id).get()
+        ).docs.map((doc) => doc.data()) as Array<Team>;
+      }
       res.send(teams);
     }
   );
@@ -55,11 +65,21 @@ export function teamsSetup() {
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
       const member = await authenticateMember(req, res);
-      const { name, description, link } = validateFields<CreateTeamPOSTData>(
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
+      const fields = validateFields<CreateTeamPOSTData>(
         [{ name: "name" }, { name: "description" }, { name: "link" }],
         req.body,
         res
       );
+      if (!fields) {
+        return res.status(400).json({ message: "Invalid data" });
+      }
+      const { name, description, link } = fields;
+
       try {
         const linkRegex = /^(ftp|http|https):\/\/[^ "]+$/;
 
@@ -73,15 +93,14 @@ export function teamsSetup() {
           name,
           description,
           link: link,
-          creatorAddress: member.walletAddress,
+          creatorID: member.id,
           createdAt: new Date(),
-          memberIDs: [member.walletAddress],
+          memberIDs: [member.id],
           submissionIDs: [],
-          winningSubmissionIDs: [],
         };
         dbTeams.doc(createdTeam.id).set(createdTeam);
 
-        await dbMembers.doc(member.walletAddress).update({
+        await dbMembers.doc(member.id).update({
           teamsJoined: member.teamsJoined + 1,
           teamIDs: member.teamIDs.concat(id),
         });
@@ -99,28 +118,33 @@ export function teamsSetup() {
     "/invite-to-team",
     authenticateToken,
     async (req: ProtectedRequest, res: Response) => {
-      const { toAddress, toTeam } = validateFields<InviteToTeamPOSTData>(
-        [{ name: "toAddress" }, { name: "toTeam" }],
+      const { toMemberID, toTeamID } = validateFields<InviteToTeamPOSTData>(
+        [{ name: "toMemberID" }, { name: "toTeamID" }],
         req.body,
         res
       );
       const member = await authenticateMember(req, res);
-      const team = (await dbTeams.doc(toTeam).get()).data();
+      if (!member) {
+        return res
+          .status(400)
+          .json({ message: "You are not authenticated with the server." });
+      }
+      const team = (await dbTeams.doc(toTeamID).get()).data();
       if (!team) {
         return res.status(404).json({ message: "Team not found" });
       }
-      if (team.creatorAddress !== member.walletAddress) {
+      if (team.creatorID !== member.id) {
         return res.status(403).json({ message: "Not authorized" });
       }
       console.log(team.memberIDs);
-      if (team.memberIDs.includes(toAddress)) {
+      if (team.memberIDs.includes(toMemberID)) {
         return res
           .status(400)
           .json({ message: "Already in the team. No need to invite." });
       }
       const existingInviteDocs = await dbTeamInvites
-        .where("toMemberAddress", "==", toAddress)
-        .where("toTeamID", "==", toTeam)
+        .where("toMemberID", "==", toMemberID)
+        .where("toTeamID", "==", toTeamID)
         .get();
       const existingInvites = existingInviteDocs.docs.map((doc) => doc.data());
 
@@ -128,11 +152,11 @@ export function teamsSetup() {
         return res.status(400).json({ message: "Already invited" });
       }
       const error = await InviteToTeam({
-        fromAddress: member.walletAddress,
-        fromAddressName: member.firstName,
-        teamID: toTeam,
-        teamName: team.name,
-        toMemberAddress: toAddress,
+        fromMemberID: member.id,
+        fromMemberName: member.firstName,
+        toTeamID,
+        toTeamName: team.name,
+        toMemberID,
       });
       if (error?.length > 0) {
         console.error(error);
@@ -185,11 +209,15 @@ async function joinOrRejectTeamInvite(
   type: "accept" | "reject"
 ) {
   const authMember = await authenticateMember(req, res);
-  const { toTeamID } = validateFields<JoinTeamPOSTData>(
+  const fields = validateFields<JoinTeamPOSTData>(
     [{ name: "toTeamID" }],
     req.body,
     res
   );
+  if (!fields) {
+    return res.status(400).json({ message: "Invalid data" });
+  }
+  const { toTeamID } = fields;
 
   // Ensure correct body data
   const memberWithTeams = (await include({
@@ -213,7 +241,7 @@ async function joinOrRejectTeamInvite(
     });
 
     const invites = await dbTeamInvites
-      .where("toMemberAddress", "==", authMember.walletAddress)
+      .where("toMemberID", "==", authMember.id)
       .where("toTeamID", "==", toTeamID)
       .get();
     const inviteData = invites.docs.map((doc) => doc.data()) as TeamInvite[];
@@ -228,19 +256,19 @@ async function joinOrRejectTeamInvite(
     // If they accept, add them to the team
     if (type === "accept") {
       // Add to team
-      if (!team.memberIDs.includes(authMember.walletAddress)) {
+      if (!team.memberIDs.includes(authMember.id)) {
         await dbTeams.doc(team.id).update({
-          memberIDs: team.memberIDs.concat(authMember.walletAddress),
+          memberIDs: team.memberIDs.concat(authMember.id),
         });
-        await dbMembers.doc(authMember.walletAddress).update({
+        await dbMembers.doc(authMember.id).update({
           teamsJoined: authMember.teamsJoined + 1,
-          teamIds: memberWithTeams.teamIDs.concat(team.id),
+          teamIDs: memberWithTeams.teamIDs.concat(team.id),
         });
       }
     }
 
     // Remove team invite ID after joining
-    await dbMembers.doc(authMember.walletAddress).update({
+    await dbMembers.doc(authMember.id).update({
       teamInviteIDs: authMember.teamInviteIDs.filter((invite) => {
         return inviteData
           .map((invite) => {
@@ -259,7 +287,7 @@ async function joinOrRejectTeamInvite(
     });
 
     await dbMembers
-      .doc(authMember.walletAddress)
+      .doc(authMember.id)
       .update({ teamInviteIDs: newValueWithoutUsInvites });
 
     res.json({
